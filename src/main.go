@@ -54,7 +54,7 @@ func main() {
 		return c.Answer(&tele.QueryResponse{
 			Results: tele.Results{&tele.ArticleResult{
 				Title: "今日我的老黄历",
-				Text:  c.Sender().Username + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
+				Text:  c.Sender().FirstName + c.Sender().LastName + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
 			}},
 			CacheTime: 15,
 		})
