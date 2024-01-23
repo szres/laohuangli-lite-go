@@ -41,7 +41,8 @@ func main() {
 	})
 
 	b.Handle(tele.OnQuery, func(c tele.Context) error {
-		timezone, _ := time.LoadLocation("Asia/Shanghai")
+		timezone := time.FixedZone("CST", 8*60*60)
+
 		pos := new(big.Int)
 		pos.SetBytes(sha1.New().Sum([]byte("positive-" + time.Now().In(timezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
 		pos.Mod(pos, big.NewInt(int64(len(laohuangliList))))
