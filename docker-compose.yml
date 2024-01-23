@@ -1,0 +1,16 @@
+version: '3'
+
+networks:
+  laohuang:
+
+services:
+  laohuangli:
+    image: laohuangli:dev
+    volumes:
+      - ./db:/db
+      - /etc/ssl/certs:/etc/ssl/certs
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - laohuang
