@@ -3,14 +3,13 @@
 .PHONY: default run stop clean
 
 default:
-	docker build --rm -t laohuangli:dev .
-	docker image prune --filter label=stage=builder -f
-
-run:
 	docker compose up -d
 
-stop:
+upgrade:
+	docker compose build
 	docker compose down
+	docker compose up -d
+	docker image prune -f
 
 clean:
 	docker compose down -v --rmi all

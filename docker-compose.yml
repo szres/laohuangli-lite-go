@@ -5,7 +5,7 @@ networks:
 
 services:
   laohuangli:
-    image: laohuangli:dev
+    build: .
     volumes:
       - ./db:/db
       - /etc/ssl/certs:/etc/ssl/certs
