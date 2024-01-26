@@ -30,14 +30,16 @@ func saveLaohuangli() {
 	db.Write("datas", "laohuangli", &laohuangliList)
 }
 
+var b *tele.Bot
+
 func main() {
 	fmt.Println("老黄历启动！")
 	pref := tele.Settings{
 		Token:  os.Getenv("BOT_TOKEN"),
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
 	}
-
-	b, err := tele.NewBot(pref)
+	var err error
+	b, err = tele.NewBot(pref)
 	if err != nil {
 		log.Fatal(err)
 		return

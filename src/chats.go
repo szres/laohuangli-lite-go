@@ -31,10 +31,11 @@ func MsgOnChat(c tele.Context) {
 		}
 	}
 	chat := chats[c.Chat().ID]
-	chat.Timeout = 60
+	chat.Timeout = 9
 	switch chat.State {
 	case NOMINATE:
-		_, reason := addNomination(strings.TrimSpace(c.Text()), c.Sender().FirstName+c.Sender().LastName)
+		nominate := strings.TrimSpace(c.Text())
+		success, reason := pushNomination(nominate, c.Sender().FirstName+c.Sender().LastName)
 		for _, v := range reason {
 			c.Send(v)
 		}
@@ -48,7 +49,7 @@ func MsgOnChat(c tele.Context) {
 }
 
 func updateChats() {
-	second := time.NewTicker(1 * time.Second)
+	second := time.NewTicker(10 * time.Second)
 	for range second.C {
 		for i, v := range chats {
 			chat := v

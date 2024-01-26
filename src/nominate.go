@@ -62,7 +62,7 @@ type similarContent struct {
 	Nominator  string
 }
 
-func addNomination(content string, nominator string) (result int, response []string) {
+func pushNomination(content string, nominator string) (result int, response []string) {
 	response = make([]string, 0)
 	if len(content) < 1 {
 		result = -2
