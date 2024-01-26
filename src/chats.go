@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/syncmap"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -17,20 +18,27 @@ type privateChat struct {
 	Timeout int
 }
 
-var chats map[int64]privateChat
+var chats = syncmap.Map{}
+
+func chatLoad(id int64) privateChat {
+	var chat privateChat
+	chatx, _ := chats.Load(id)
+	chat = chatx.(privateChat)
+	return chat
+}
 
 func init() {
-	chats = make(map[int64]privateChat)
+	chats = syncmap.Map{}
 	go updateChats()
 }
 
 func MsgOnChat(c tele.Context) {
-	if _, ok := chats[c.Chat().ID]; !ok {
-		chats[c.Chat().ID] = privateChat{
+	if _, ok := chats.Load(c.Chat().ID); !ok {
+		chats.Store(c.Chat().ID, privateChat{
 			State: IDLE,
-		}
+		})
 	}
-	chat := chats[c.Chat().ID]
+	chat := chatLoad(c.Chat().ID)
 	chat.Timeout = 9
 	switch chat.State {
 	case NOMINATE:
@@ -45,20 +53,21 @@ func MsgOnChat(c tele.Context) {
 			chat.State = NOMINATE
 		}
 	}
-	chats[c.Chat().ID] = chat
+	chats.Store(c.Chat().ID, chat)
 }
 
 func updateChats() {
 	second := time.NewTicker(10 * time.Second)
 	for range second.C {
-		for i, v := range chats {
-			chat := v
+		chats.Range(func(i, v any) bool {
+			chat := v.(privateChat)
 			if chat.Timeout <= 0 {
-				delete(chats, i)
+				chats.Delete(i)
 			} else {
 				chat.Timeout--
-				chats[i] = chat
+				chats.Store(i, chat)
 			}
-		}
+			return true
+		})
 	}
 }
