@@ -84,7 +84,7 @@ func main() {
 					Title: "今日我的老黄历",
 					Text:  c.Sender().FirstName + c.Sender().LastName + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
 				}},
-			CacheTime:         15,
+			CacheTime:         0,
 			IsPersonal:        true,
 			SwitchPMText:      "提名新词条",
 			SwitchPMParameter: "nominate",
