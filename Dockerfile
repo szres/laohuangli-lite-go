@@ -7,6 +7,6 @@ RUN go mod tidy
 RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app
 
 FROM scratch
-COPY --from=builder /app /app
+COPY --from=builder /app /app/laohuangli
 VOLUME /db
-ENTRYPOINT ["/app"]
+ENTRYPOINT ["/app/laohuangli"]
