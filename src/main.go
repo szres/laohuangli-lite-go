@@ -54,10 +54,6 @@ func main() {
 		MsgOnChat(c)
 		return c.Send("请输入你要提名的词条内容：")
 	})
-	b.Handle("/fnominate", func(c tele.Context) error {
-		MsgOnChat(c)
-		return c.Send("使用强制提名模式，将会跳过查重直接进入提名，请确认你的提名确实有效，然后输入你要提名的词条内容：")
-	})
 
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		MsgOnChat(c)

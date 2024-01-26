@@ -1,4 +1,4 @@
-module github.com/Nigh/laohuangli-lite-go
+module laohuangli-lite-go
 
 go 1.21.5
 

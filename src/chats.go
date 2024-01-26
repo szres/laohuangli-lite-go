@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -9,7 +10,6 @@ import (
 const (
 	IDLE int = iota
 	NOMINATE
-	NOMINATE_FORCE
 )
 
 type privateChat struct {
@@ -33,23 +33,15 @@ func MsgOnChat(c tele.Context) {
 	chat := chats[c.Chat().ID]
 	chat.Timeout = 60
 	switch chat.State {
-	case NOMINATE_FORCE:
-		_, reason := addNomination(c.Text(), c.Sender().FirstName+c.Sender().LastName, true)
-		c.Send(reason)
-		chat.State = IDLE
 	case NOMINATE:
-		res, reason := addNomination(c.Text(), c.Sender().FirstName+c.Sender().LastName, false)
-		c.Send(reason)
-		if res == -1 {
-			c.Send("如果确认你的提名确实有效，可以发送 /fnominate 进行强制提名")
+		_, reason := addNomination(strings.TrimSpace(c.Text()), c.Sender().FirstName+c.Sender().LastName)
+		for _, v := range reason {
+			c.Send(v)
 		}
 		chat.State = IDLE
 	case IDLE:
 		if c.Text() == "/nominate" {
 			chat.State = NOMINATE
-		}
-		if c.Text() == "/fnominate" {
-			chat.State = NOMINATE_FORCE
 		}
 	}
 	chats[c.Chat().ID] = chat
