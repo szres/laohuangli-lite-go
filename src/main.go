@@ -22,7 +22,7 @@ var laohuangliList []laohuangli
 var db *scribble.Driver
 
 func init() {
-	db, _ = scribble.New("./db", nil)
+	db, _ = scribble.New("../db", nil)
 	db.Read("datas", "laohuangli", &laohuangliList)
 }
 
