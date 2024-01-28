@@ -18,6 +18,7 @@ type laohuangli struct {
 	Nominator string `json:"nominator"`
 }
 
+var gTimezone *time.Location = time.FixedZone("CST", 8*60*60)
 var laohuangliList []laohuangli
 var db *scribble.Driver
 
@@ -73,14 +74,13 @@ func main() {
 	})
 
 	b.Handle(tele.OnQuery, func(c tele.Context) error {
-		timezone := time.FixedZone("CST", 8*60*60)
 
 		pos := new(big.Int)
-		pos.SetBytes(sha1.New().Sum([]byte("positive-" + time.Now().In(timezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
+		pos.SetBytes(sha1.New().Sum([]byte("positive-" + time.Now().In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
 		pos.Mod(pos, big.NewInt(int64(len(laohuangliList))))
 
 		neg := new(big.Int)
-		neg.SetBytes(sha1.New().Sum([]byte("negative-" + time.Now().In(timezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
+		neg.SetBytes(sha1.New().Sum([]byte("negative-" + time.Now().In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
 		neg.Mod(neg, big.NewInt(int64(len(laohuangliList))))
 
 		results := make(tele.Results, 0)

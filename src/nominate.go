@@ -158,7 +158,7 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 }
 
 func buildVoteText(n nomination) string {
-	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Unix(n.Time+86400, 0).Format("2006-01-02 15:04"))
+	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Unix(n.Time+86400, 0).In(gTimezone).Format("2006-01-02 15:04"))
 }
 func buildVoteMarkup(n nomination) *tele.ReplyMarkup {
 	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
