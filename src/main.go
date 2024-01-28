@@ -33,6 +33,9 @@ func saveLaohuangli() {
 var b *tele.Bot
 
 func fullName(u *tele.User) string {
+	if u.FirstName == "" || u.LastName == "" {
+		return u.FirstName + u.LastName
+	}
 	return u.FirstName + " " + u.LastName
 }
 
