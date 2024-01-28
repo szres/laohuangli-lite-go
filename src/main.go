@@ -32,6 +32,10 @@ func saveLaohuangli() {
 
 var b *tele.Bot
 
+func fullName(u *tele.User) string {
+	return u.FirstName + " " + u.LastName
+}
+
 func main() {
 	fmt.Println("老黄历启动！")
 	pref := tele.Settings{
@@ -84,7 +88,7 @@ func main() {
 			Results: tele.Results{
 				&tele.ArticleResult{
 					Title: "今日我的老黄历",
-					Text:  c.Sender().FirstName + c.Sender().LastName + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
+					Text:  fullName(c.Sender()) + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
 				}},
 			CacheTime:         0,
 			IsPersonal:        true,
