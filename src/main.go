@@ -43,7 +43,7 @@ func main() {
 	fmt.Println("老黄历启动！")
 	pref := tele.Settings{
 		Token:  os.Getenv("BOT_TOKEN"),
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		Poller: &tele.LongPoller{Timeout: 5 * time.Second},
 	}
 	var err error
 	b, err = tele.NewBot(pref)
@@ -55,27 +55,23 @@ func main() {
 	b.Handle("/hello", func(c tele.Context) error {
 		return c.Send("Hello!")
 	})
+	b.Handle("/help", func(c tele.Context) error {
+		return cmdOnChat(c)
+	})
 	b.Handle("/start", func(c tele.Context) error {
-		MsgOnChat(c)
-		return c.Send("如果要提名新词条请发送 /nominate")
+		return cmdOnChat(c)
 	})
 	b.Handle("/nominate", func(c tele.Context) error {
-		MsgOnChat(c)
-		return c.Send("请输入你要提名的词条内容：")
+		return cmdOnChat(c)
+	})
+	b.Handle("/list", func(c tele.Context) error {
+		return cmdOnChat(c)
 	})
 
 	b.Handle(tele.OnText, func(c tele.Context) error {
-		MsgOnChat(c)
-		return nil
+		return msgOnChat(c)
 	})
-	b.Handle(tele.OnPoll, func(c tele.Context) error {
-		fmt.Printf("c.Poll(): %v\n", c.Poll())
-		return nil
-	})
-	b.Handle(tele.OnPollAnswer, func(c tele.Context) error {
-		fmt.Printf("c.PollAnswer(): %v\n", c.PollAnswer())
-		return nil
-	})
+
 	b.Handle(tele.OnQuery, func(c tele.Context) error {
 		timezone := time.FixedZone("CST", 8*60*60)
 
@@ -87,13 +83,34 @@ func main() {
 		neg.SetBytes(sha1.New().Sum([]byte("negative-" + time.Now().In(timezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
 		neg.Mod(neg, big.NewInt(int64(len(laohuangliList))))
 
-		return c.Answer(&tele.QueryResponse{
-			Results: tele.Results{
-				&tele.ArticleResult{
+		results := make(tele.Results, 0)
+		if pos.Int64() != neg.Int64() {
+			results = append(results, &tele.ArticleResult{
+				Title: "今日我的老黄历",
+				Text:  fullName(c.Sender()) + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
+			})
+		} else {
+			if pos.Int64()%2 == 0 {
+				results = append(results, &tele.ArticleResult{
 					Title: "今日我的老黄历",
-					Text:  fullName(c.Sender()) + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
-				}},
-			CacheTime:         0,
+					Text:  fullName(c.Sender()) + " 今日:\n诸事不宜。请谨慎行事。",
+				})
+			} else {
+				results = append(results, &tele.ArticleResult{
+					Title: "今日我的老黄历",
+					Text:  fullName(c.Sender()) + " 今日:\n诸事皆宜。愿好运与你同行。",
+				})
+			}
+		}
+		for _, v := range nominations {
+			if v.NominatorID == c.Sender().ID {
+				results = append(results, buildVotes(v))
+			}
+		}
+
+		return c.Answer(&tele.QueryResponse{
+			Results:           results,
+			CacheTime:         3,
 			IsPersonal:        true,
 			SwitchPMText:      "提名新词条",
 			SwitchPMParameter: "nominate",

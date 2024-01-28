@@ -9,4 +9,7 @@ require (
 	gopkg.in/telebot.v3 v3.2.1
 )
 
-require github.com/jcelliott/lumber v0.0.0-20160324203708-dd349441af25 // indirect
+require (
+	github.com/jcelliott/lumber v0.0.0-20160324203708-dd349441af25 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
+)
