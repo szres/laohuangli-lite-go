@@ -35,10 +35,10 @@ func init() {
 }
 func msgDelete() func(c tele.Context) error {
 	return func(c tele.Context) error {
-		n := getNomination(c.Message().ID)
+		n := nominations.pickByID(c.Message().ID)
 		if n != nil {
 			c.Send("提名词条 \"`"+n.Content+"`\" 已被删除，投票立即失效", tele.ModeMarkdownV2)
-			deleteNomination(c.Message().ID)
+			nominations.remove(c.Message().ID)
 		}
 		defer func() {
 			c.Delete()
@@ -46,7 +46,15 @@ func msgDelete() func(c tele.Context) error {
 		return nil
 	}
 }
-func cmdOnChat(c tele.Context) error {
+func msg2User(userID int64, what any, opts ...any) error {
+	chat, chaterr := b.ChatByID(userID)
+	if chaterr == nil {
+		_, err := b.Send(chat, what, opts)
+		return err
+	}
+	return chaterr
+}
+func cmdInChatHandler(c tele.Context) error {
 	if _, ok := chats.Load(c.Chat().ID); !ok {
 		chats.Store(c.Chat().ID, privateChat{
 			State: IDLE,
@@ -91,10 +99,21 @@ func cmdOnChat(c tele.Context) error {
 		}
 		chat.State = NOMINATE
 		return c.Send("请输入你要提名的词条内容：")
+
+	case "/forcereadlocal":
+		laohuangliList.init()
+		nominations.init()
+		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
+	case "/listall":
+		var msg string
+		for i, v := range nominations {
+			msg += fmt.Sprintf("%d. `%s` 提名词条 \"`%s`\" 赞成 `%d` 票，反对 `%d` 票\n结束时间: `%s`\n", i+1, v.NominatorName, v.Content, len(v.ApprovedUsers), len(v.RefusedUsers), v.voteEndTimeString())
+		}
+		return c.Send(msg, tele.ModeMarkdownV2)
 	}
 	return nil
 }
-func msgOnChat(c tele.Context) error {
+func msgInChatHandler(c tele.Context) error {
 	senderName := fullName(c.Sender())
 	if _, ok := chats.Load(c.Chat().ID); !ok {
 		chats.Store(c.Chat().ID, privateChat{
@@ -138,13 +157,13 @@ func msgOnChat(c tele.Context) error {
 				ApprovedUsers: make([]int64, 0),
 				RefusedUsers:  make([]int64, 0),
 			}
-			msg, err := b.Send(c.Chat(), buildVoteText(newNomination), mk, tele.ModeMarkdownV2)
+			msg, err := b.Send(c.Chat(), newNomination.buildVotingText(), mk, tele.ModeMarkdownV2)
 			if err != nil {
 				fmt.Println(err)
 			} else {
 				newNomination.UUID = uuid.NewV4().String()
 				newNomination.ID = msg.ID
-				addNomination(newNomination)
+				nominations.add(newNomination)
 				b.Handle(&deleteBtn, msgDelete())
 			}
 			return err
