@@ -31,6 +31,13 @@ func init() {
 	go updateNominations()
 }
 
+func approveNomination(n nomination) {
+	laohuangliList = append(laohuangliList, laohuangli{
+		Content:   n.Content,
+		Nominator: n.NominatorName,
+	})
+}
+
 func updateNominations() {
 	minute := time.NewTicker(1 * time.Minute)
 	for range minute.C {
@@ -42,10 +49,7 @@ func updateNominations() {
 				isNominationUpdated = true
 				if len(v.ApprovedUsers) >= 5 && len(v.RefusedUsers) < len(v.ApprovedUsers)/2 {
 					isApproved = true
-					laohuangliList = append(laohuangliList, laohuangli{
-						Content:   v.Content,
-						Nominator: v.NominatorName,
-					})
+					approveNomination(v)
 					if chaterr == nil {
 						b.Send(chat, fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
 					}
@@ -53,6 +57,14 @@ func updateNominations() {
 					if chaterr == nil {
 						b.Send(chat, fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，未达到上线要求，无法上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
 					}
+				}
+			} else if len(v.ApprovedUsers) >= 10 && len(v.RefusedUsers) < len(v.ApprovedUsers)/3 {
+				isApproved = true
+				isNominationUpdated = true
+				approveNomination(v)
+				chat, chaterr := b.ChatByID(v.NominatorID)
+				if chaterr == nil {
+					b.Send(chat, fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 投票达到快速过审标准，最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
 				}
 			} else {
 				newNominations = append(newNominations, v)
@@ -153,7 +165,7 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 		resp += "请确认词条无重复后再发布投票。"
 		response = append(response, resp)
 	}
-	response = append(response, "提名词条 \""+content+"\" 投票已生成，发布投票后将进入投票阶段。\n24 小时内获得不少于 5 个赞成票且反对票数不多于赞成票数的一半，词条即可上线")
+	response = append(response, "提名词条 \""+content+"\" 投票已生成，发布投票后将进入投票阶段。\n获得不少于 5 个赞成票且赞成率超过 66% 的提名在24小时后可上线。\n获得不少于 10 个赞成票且赞成率超过 75% 的词条可立即上线。")
 	return
 }
 
