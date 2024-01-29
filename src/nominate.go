@@ -165,7 +165,7 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 		resp += "请确认词条无重复后再发布投票。"
 		response = append(response, resp)
 	}
-	response = append(response, "提名词条 \""+content+"\" 投票已生成，发布投票后将进入投票阶段。\n24 小时内获得不少于 5 个赞成票且反对票数不多于赞成票数的一半，词条即可上线")
+	response = append(response, "提名词条 \""+content+"\" 投票已生成，发布投票后将进入投票阶段。\n获得不少于 5 个赞成票且赞成率超过 66% 的提名在24小时后可上线。\n获得不少于 10 个赞成票且赞成率超过 75% 的词条可立即上线。")
 	return
 }
 
