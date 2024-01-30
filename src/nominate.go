@@ -173,7 +173,7 @@ type similarContent struct {
 	Nominator  string
 }
 
-func dupNominationCheck(content string, nominator string) (result int, response []string) {
+func nominationValidCheck(content string, nominator string) (result int, response []string) {
 	response = make([]string, 0)
 	similarNominations := make([]similarContent, 0)
 	similarSort := func() {
@@ -211,6 +211,11 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 	if len(similarNominations) > 0 && similarNominations[0].Similarity > 0.9 {
 		result = -1
 		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \""+similarNominations[0].Content+"\" 相似度过高，请更换提名的词条")
+		return
+	}
+	if len(content) > 32 {
+		result = -1
+		response = append(response, "提名内容过长，请控制在 32 个字以内")
 		return
 	}
 
