@@ -26,11 +26,13 @@ var (
 	gAdminID    int64
 )
 var laohuangliList laohuangliSlice
+var laohuangliValidLength int64
 var db *scribble.Driver
 
 func (lhl *laohuangliSlice) init() {
 	*lhl = make(laohuangliSlice, 0)
 	db.Read("datas", "laohuangli", lhl)
+	laohuangliValidLength = int64(len(*lhl))
 }
 func (lhl *laohuangliSlice) add(l laohuangli) {
 	*lhl = append(*lhl, l)
@@ -43,11 +45,11 @@ func (lhl *laohuangliSlice) remove(c string) bool {
 func (lhl *laohuangliSlice) randomResultFromString(s string) string {
 	pos := new(big.Int)
 	pos.SetBytes(sha1.New().Sum([]byte("positive-" + s)))
-	pos.Mod(pos, big.NewInt(int64(len(*lhl))))
+	pos.Mod(pos, big.NewInt(laohuangliValidLength))
 
 	neg := new(big.Int)
 	neg.SetBytes(sha1.New().Sum([]byte("negative-" + s)))
-	neg.Mod(neg, big.NewInt(int64(len(*lhl))))
+	neg.Mod(neg, big.NewInt(laohuangliValidLength))
 	if pos.Int64() != neg.Int64() {
 		return "今日:\n宜" + (*lhl)[pos.Int64()].Content + "，忌" + (*lhl)[neg.Int64()].Content + "。"
 	} else {
@@ -58,10 +60,21 @@ func (lhl *laohuangliSlice) randomResultFromString(s string) string {
 		}
 	}
 }
+func (lhl laohuangliSlice) update() {
+	minute := time.NewTicker(1 * time.Minute)
+	day := time.Now().In(gTimezone).Day()
+	for range minute.C {
+		if time.Now().In(gTimezone).Day() != day {
+			day = time.Now().In(gTimezone).Day()
+			laohuangliValidLength = int64(len(laohuangliList))
+		}
+	}
+}
 
 func init() {
 	db, _ = scribble.New("../db", nil)
 	laohuangliList.init()
+	go laohuangliList.update()
 }
 
 var b *tele.Bot
@@ -77,7 +90,8 @@ func main() {
 	fmt.Println("老黄历启动！")
 	gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 	pref := tele.Settings{
-		Token:  os.Getenv("BOT_TOKEN"),
+		// Token:  os.Getenv("BOT_TOKEN"),
+		Token:  "252481040:AAHmOfe5_eztE0DckaCjpwUXILvWUuASHBY",
 		Poller: &tele.LongPoller{Timeout: 5 * time.Second},
 	}
 	var err error
