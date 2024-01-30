@@ -144,7 +144,7 @@ func msgInChatHandler(c tele.Context) error {
 		if nominate[0] == '/' {
 			return c.Send("格式错误，请重新提名。")
 		}
-		success, reason := dupNominationCheck(nominate, senderName)
+		success, reason := nominationValidCheck(nominate, senderName)
 		for _, v := range reason {
 			c.Send(v)
 		}
