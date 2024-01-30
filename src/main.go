@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -75,6 +76,15 @@ func init() {
 	db, _ = scribble.New("../db", nil)
 	laohuangliList.init()
 	go laohuangliList.update()
+	kumaPushURL := os.Getenv("KUMA_PUSH_URL")
+	if kumaPushURL != "" {
+		go func() {
+			minute := time.NewTicker(1 * time.Minute)
+			for range minute.C {
+				http.Get(kumaPushURL + "1")
+			}
+		}()
+	}
 }
 
 var b *tele.Bot
