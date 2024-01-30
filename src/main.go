@@ -14,6 +14,14 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
+type testenv struct {
+	Token   string `json:"token"`
+	AdminID string `json:"adminid"`
+	KumaURL string `json:"kumaurl"`
+}
+
+var testEnv testenv
+
 type laohuangli struct {
 	UUID      string `json:"uuid"`
 	Content   string `json:"content"`
@@ -22,9 +30,11 @@ type laohuangli struct {
 type laohuangliSlice []laohuangli
 
 var (
-	gTimezone   *time.Location = time.FixedZone("CST", 8*60*60)
-	gTimeFormat string         = "2006-01-02 15:04"
-	gAdminID    int64
+	gTimezone    *time.Location = time.FixedZone("CST", 8*60*60)
+	gTimeFormat  string         = "2006-01-02 15:04"
+	gAdminID     int64
+	gKumaPushURL string
+	gToken       string
 )
 var laohuangliList laohuangliSlice
 var laohuangliValidLength int64
@@ -72,19 +82,45 @@ func (lhl laohuangliSlice) update() {
 	}
 }
 
+func kumaPushInit() {
+	if gKumaPushURL != "" {
+		var responseTime int64 = 1
+		kumaPush := func() {
+			start := time.Now()
+			_, err := http.Get(gKumaPushURL + strconv.FormatInt(responseTime, 10))
+			if err == nil {
+				responseTime = time.Since(start).Milliseconds()
+			} else {
+				responseTime = 9999
+			}
+		}
+		kumaPush()
+		go func() {
+			minute := time.NewTicker(1 * time.Minute)
+			for range minute.C {
+				kumaPush()
+			}
+		}()
+	}
+}
+
 func init() {
 	db, _ = scribble.New("../db", nil)
 	laohuangliList.init()
 	go laohuangliList.update()
-	kumaPushURL := os.Getenv("KUMA_PUSH_URL")
-	if kumaPushURL != "" {
-		go func() {
-			minute := time.NewTicker(1 * time.Minute)
-			for range minute.C {
-				http.Get(kumaPushURL + "1")
-			}
-		}()
+
+	db.Read("test", "env", &testEnv)
+	if testEnv.Token != "" {
+		gToken = testEnv.Token
+		gAdminID, _ = strconv.ParseInt(testEnv.AdminID, 10, 64)
+		gKumaPushURL = testEnv.KumaURL
+	} else {
+		gToken = os.Getenv("BOT_TOKEN")
+		gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
+		gKumaPushURL = os.Getenv("KUMA_PUSH_URL")
 	}
+	fmt.Printf("gToken:%s\ngAdminID:%d\ngKumaPushURL:%s\n", gToken, gAdminID, gKumaPushURL)
+	kumaPushInit()
 }
 
 var b *tele.Bot
@@ -98,9 +134,8 @@ func fullName(u *tele.User) string {
 
 func main() {
 	fmt.Println("老黄历启动！")
-	gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 	pref := tele.Settings{
-		Token:  os.Getenv("BOT_TOKEN"),
+		Token:  gToken,
 		Poller: &tele.LongPoller{Timeout: 5 * time.Second},
 	}
 	var err error
