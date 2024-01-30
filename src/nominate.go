@@ -14,6 +14,8 @@ import (
 type nomination struct {
 	UUID          string  `json:"uuid"`
 	ID            int     `json:"id"`
+	CID           int64   `json:"cid"`
+	LastVoteID    int     `json:"lastvoteid"`
 	Content       string  `json:"content"`
 	NominatorName string  `json:"nominator"`
 	NominatorID   int64   `json:"nominatorID"`
@@ -21,77 +23,100 @@ type nomination struct {
 	ApprovedUsers []int64 `json:"approvedUsers"`
 	RefusedUsers  []int64 `json:"refusedUsers"`
 }
+type nominationSlice []nomination
 
-var nominations []nomination
-var isNominationUpdated bool = false
-
-func init() {
-	nominations = make([]nomination, 0)
-	db.Read("datas", "nominations", &nominations)
-	go updateNominations()
+func (n *nomination) approvedBy(user int64) int {
+	nominations.lazySave()
+	n.RefusedUsers = removeUserFromList(user, n.RefusedUsers)
+	if isUserExistInList(user, n.ApprovedUsers) {
+		n.ApprovedUsers = removeUserFromList(user, n.ApprovedUsers)
+		return 0
+	}
+	n.ApprovedUsers = addUserToList(user, n.ApprovedUsers)
+	return 1
+}
+func (n *nomination) refusedBy(user int64) int {
+	nominations.lazySave()
+	n.ApprovedUsers = removeUserFromList(user, n.ApprovedUsers)
+	if isUserExistInList(user, n.RefusedUsers) {
+		n.RefusedUsers = removeUserFromList(user, n.RefusedUsers)
+		return 0
+	}
+	n.RefusedUsers = addUserToList(user, n.RefusedUsers)
+	return 1
+}
+func (n *nomination) isPassed() bool {
+	if len(n.ApprovedUsers) >= 5 && len(n.RefusedUsers) < len(n.ApprovedUsers)/2 {
+		return true
+	}
+	return false
+}
+func (n *nomination) isQuickPassed() bool {
+	if len(n.ApprovedUsers) >= 10 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
+		return true
+	}
+	return false
+}
+func (n *nomination) isQuickRefused() bool {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 10 && len(n.RefusedUsers) > len(n.ApprovedUsers) {
+		return true
+	}
+	return false
+}
+func (n *nomination) voteEndTimeString() string {
+	return time.Unix(n.Time+86400, 0).In(gTimezone).Format(gTimeFormat)
+}
+func (n nomination) MessageSig() (messageID string, chatID int64) {
+	return strconv.Itoa(n.ID), n.CID
 }
 
-func approveNomination(n nomination) {
-	laohuangliList = append(laohuangliList, laohuangli{
-		Content:   n.Content,
-		Nominator: n.NominatorName,
-	})
-}
-
-func updateNominations() {
-	minute := time.NewTicker(1 * time.Minute)
-	for range minute.C {
-		isApproved := false
-		newNominations := make([]nomination, 0)
-		for _, v := range nominations {
-			if time.Now().Unix() >= v.Time+86400 {
-				chat, chaterr := b.ChatByID(v.NominatorID)
-				isNominationUpdated = true
-				if len(v.ApprovedUsers) >= 5 && len(v.RefusedUsers) < len(v.ApprovedUsers)/2 {
-					isApproved = true
-					approveNomination(v)
-					if chaterr == nil {
-						b.Send(chat, fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
-					}
-				} else {
-					if chaterr == nil {
-						b.Send(chat, fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，未达到上线要求，无法上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
-					}
-				}
-			} else if len(v.ApprovedUsers) >= 10 && len(v.RefusedUsers) < len(v.ApprovedUsers)/3 {
-				isApproved = true
-				isNominationUpdated = true
-				approveNomination(v)
-				chat, chaterr := b.ChatByID(v.NominatorID)
-				if chaterr == nil {
-					b.Send(chat, fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 投票达到快速过审标准，最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", v.Content, len(v.ApprovedUsers), len(v.RefusedUsers)), tele.ModeMarkdownV2)
-				}
-			} else {
-				newNominations = append(newNominations, v)
-			}
-		}
-		nominations = newNominations
-		if isNominationUpdated {
-			saveNominations()
-			isNominationUpdated = false
-		}
-		if isApproved {
-			saveLaohuangli()
+func removeUserFromList(user int64, list []int64) []int64 {
+	for i, v := range list {
+		if v == user {
+			return append(list[:i], list[i+1:]...)
 		}
 	}
+	return list
+}
+func addUserToList(user int64, list []int64) []int64 {
+	for _, v := range list {
+		if v == user {
+			return list
+		}
+	}
+	return append(list, user)
+}
+func isUserExistInList(user int64, list []int64) bool {
+	for _, v := range list {
+		if v == user {
+			return true
+		}
+	}
+	return false
 }
 
-func saveNominations() {
-	db.Write("datas", "nominations", &nominations)
+var nominations nominationSlice
+
+func (ns *nominationSlice) init() {
+	*ns = make(nominationSlice, 0)
+	db.Read("datas", "nominations", ns)
+}
+func (ns *nominationSlice) add(n nomination) {
+	*ns = append(*ns, n)
+	ns.save()
+}
+func (ns *nominationSlice) remove(id int) {
+	for i, n := range *ns {
+		if n.ID == id {
+			*ns = append((*ns)[:i], (*ns)[i+1:]...)
+			break
+		}
+	}
+	ns.save()
 }
 
-func addNomination(n nomination) {
-	nominations = append(nominations, n)
-	saveNominations()
-}
-
-func getNomination(id int) *nomination {
-	for _, v := range nominations {
+func (ns *nominationSlice) pickByID(id int) *nomination {
+	for _, v := range *ns {
 		if v.ID == id {
 			return &v
 		}
@@ -99,14 +124,47 @@ func getNomination(id int) *nomination {
 	return nil
 }
 
-func deleteNomination(id int) {
-	for i, v := range nominations {
-		if v.ID == id {
-			nominations = append(nominations[:i], nominations[i+1:]...)
-			break
-		}
+func (ns *nominationSlice) save() {
+	db.Write("datas", "nominations", ns)
+}
+
+var isNominationUpdated bool = false
+
+func (ns nominationSlice) lazySave() {
+	isNominationUpdated = true
+}
+func (ns *nominationSlice) saveRoutine() {
+	if isNominationUpdated {
+		ns.save()
+		isNominationUpdated = false
 	}
-	saveNominations()
+}
+
+func (ns *nominationSlice) update() {
+	minute := time.NewTicker(60 * time.Second)
+	for range minute.C {
+		newNominations := make(nominationSlice, 0)
+		for _, v := range *ns {
+			if time.Now().Unix() < v.Time+86400 && !v.isQuickPassed() && !v.isQuickRefused() {
+				newNominations = append(newNominations, v)
+			} else {
+				if time.Now().Unix() >= v.Time+86400 && v.isPassed() || v.isQuickPassed() {
+					laohuangliList.add(laohuangli{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
+				}
+				msg2User(v.NominatorID, v.buildResultMsgText())
+				// TODO: Should edit last vote msg there
+				b.Edit(v, v.buildVoteResultText(), tele.ModeMarkdownV2)
+				ns.lazySave()
+			}
+		}
+		*ns = newNominations
+		ns.saveRoutine()
+	}
+}
+
+func init() {
+	nominations.init()
+	go nominations.update()
 }
 
 type similarContent struct {
@@ -169,10 +227,7 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 	return
 }
 
-func buildVoteText(n nomination) string {
-	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Unix(n.Time+86400, 0).In(gTimezone).Format("2006-01-02 15:04"))
-}
-func buildVoteMarkup(n nomination) *tele.ReplyMarkup {
+func (n nomination) buildVoteMarkup() *tele.ReplyMarkup {
 	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
 	voteApproveBtn := mk.Data("赞成", "voteApproveBtn", n.UUID)
 	voteRefuseBtn := mk.Data("反对", "voteRefuseBtn", n.UUID)
@@ -182,65 +237,87 @@ func buildVoteMarkup(n nomination) *tele.ReplyMarkup {
 	return mk
 }
 
+func (n nomination) buildVotingText() string {
+	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), n.voteEndTimeString())
+}
+
+func (n nomination) buildVoteResultText() string {
+	if n.isQuickPassed() {
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
+	}
+	if n.isQuickRefused() {
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速否决条件。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已被系统否决。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+	}
+	if n.isPassed() {
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
+	}
+	return ""
+}
+
+func (n nomination) buildResultMsgText() string {
+	if n.isQuickPassed() {
+		return fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 获得赞成票 `%d` 票，反对票 `%d` 票，达到快速上线要求。现在已经正式上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+	}
+	if n.isQuickRefused() {
+		return fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 获得赞成票 `%d` 票，反对票 `%d` 票，达到快速否决条件，已经被系统拒绝。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+	}
+	if n.isPassed() {
+		return fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+	}
+	return fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，未达到上线要求，无法上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+}
+
 func buildVotes(n nomination) (result *tele.ArticleResult) {
 	result = &tele.ArticleResult{}
 	result.Title = "发布词条 " + n.Content + " 的投票"
-	result.Text = buildVoteText(n)
+	result.Text = n.buildVotingText()
 	result.ParseMode = tele.ModeMarkdownV2
-	result.ReplyMarkup = buildVoteMarkup(n)
+
+	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
+	voteApproveBtn := mk.Data("赞成", "voteApproveBtn", n.UUID)
+	voteRefuseBtn := mk.Data("反对", "voteRefuseBtn", n.UUID)
+	mk.Inline(mk.Row(voteApproveBtn, voteRefuseBtn))
+
+	result.ReplyMarkup = mk
 	return
 }
 
-func removeUserFromList(user int64, list []int64) []int64 {
-	for i, v := range list {
-		if v == user {
-			return append(list[:i], list[i+1:]...)
+func buildVoteResultSimple(uuid string) string {
+	if uuid == "" {
+		return "投票已结束"
+	}
+	for _, v := range laohuangliList {
+		if v.UUID == uuid {
+			return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已经通过投票正式上线。", v.Nominator, v.Content)
 		}
 	}
-	return list
+	return "投票已结束"
 }
-func addUserToList(user int64, list []int64) []int64 {
-	for _, v := range list {
-		if v == user {
-			return list
-		}
-	}
-	return append(list, user)
-}
-func isUserExistInList(user int64, list []int64) bool {
-	for _, v := range list {
-		if v == user {
-			return true
-		}
-	}
-	return false
-}
+
 func voteApprove() func(c tele.Context) error {
 	return func(c tele.Context) (err error) {
 		for idx, n := range nominations {
 			if n.UUID == c.Data() {
-				isNominationUpdated = true
-				if isUserExistInList(c.Sender().ID, n.ApprovedUsers) {
-					nominations[idx].ApprovedUsers = removeUserFromList(c.Sender().ID, n.ApprovedUsers)
+				res := nominations[idx].approvedBy(c.Sender().ID)
+				if res == 0 {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您取消了赞成票",
 					})
-					err = c.Edit(buildVoteText(nominations[idx]), buildVoteMarkup(nominations[idx]), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				} else {
-					nominations[idx].ApprovedUsers = addUserToList(c.Sender().ID, n.ApprovedUsers)
-					nominations[idx].RefusedUsers = removeUserFromList(c.Sender().ID, n.RefusedUsers)
 					c.Respond(&tele.CallbackResponse{
 						Text: "您投出了赞成票",
 					})
-					err = c.Edit(buildVoteText(nominations[idx]), buildVoteMarkup(nominations[idx]), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				}
 			}
 		}
-		c.Edit(c.Text(), tele.ModeMarkdownV2)
+		// TODO: show vote result better
+		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
-			Text: "投票已失效",
+			Text: "投票已结束",
 		})
 	}
 }
@@ -248,28 +325,26 @@ func voteRefuse() func(c tele.Context) error {
 	return func(c tele.Context) (err error) {
 		for idx, n := range nominations {
 			if n.UUID == c.Data() {
-				isNominationUpdated = true
-				if isUserExistInList(c.Sender().ID, n.RefusedUsers) {
-					nominations[idx].RefusedUsers = removeUserFromList(c.Sender().ID, n.RefusedUsers)
+				res := nominations[idx].refusedBy(c.Sender().ID)
+				if res == 0 {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您取消了反对票",
 					})
-					err = c.Edit(buildVoteText(nominations[idx]), buildVoteMarkup(nominations[idx]), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				} else {
-					nominations[idx].RefusedUsers = addUserToList(c.Sender().ID, n.RefusedUsers)
-					nominations[idx].ApprovedUsers = removeUserFromList(c.Sender().ID, n.ApprovedUsers)
 					c.Respond(&tele.CallbackResponse{
 						Text: "您投出了反对票",
 					})
-					err = c.Edit(buildVoteText(nominations[idx]), buildVoteMarkup(nominations[idx]), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				}
 			}
 		}
-		c.Edit(c.Text(), tele.ModeMarkdownV2)
+		// TODO: show vote result better
+		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
-			Text: "投票已失效",
+			Text: "投票已结束",
 		})
 	}
 }

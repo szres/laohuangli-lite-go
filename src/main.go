@@ -14,21 +14,54 @@ import (
 )
 
 type laohuangli struct {
+	UUID      string `json:"uuid"`
 	Content   string `json:"content"`
 	Nominator string `json:"nominator"`
 }
+type laohuangliSlice []laohuangli
 
-var gTimezone *time.Location = time.FixedZone("CST", 8*60*60)
-var laohuangliList []laohuangli
+var (
+	gTimezone   *time.Location = time.FixedZone("CST", 8*60*60)
+	gTimeFormat string         = "2006-01-02 15:04"
+	gAdminID    int64
+)
+var laohuangliList laohuangliSlice
 var db *scribble.Driver
+
+func (lhl *laohuangliSlice) init() {
+	*lhl = make(laohuangliSlice, 0)
+	db.Read("datas", "laohuangli", lhl)
+}
+func (lhl *laohuangliSlice) add(l laohuangli) {
+	*lhl = append(*lhl, l)
+	db.Write("datas", "laohuangli", lhl)
+}
+func (lhl *laohuangliSlice) remove(c string) bool {
+	// TODO:
+	return false
+}
+func (lhl *laohuangliSlice) randomResultFromString(s string) string {
+	pos := new(big.Int)
+	pos.SetBytes(sha1.New().Sum([]byte("positive-" + s)))
+	pos.Mod(pos, big.NewInt(int64(len(*lhl))))
+
+	neg := new(big.Int)
+	neg.SetBytes(sha1.New().Sum([]byte("negative-" + s)))
+	neg.Mod(neg, big.NewInt(int64(len(*lhl))))
+	if pos.Int64() != neg.Int64() {
+		return "今日:\n宜" + (*lhl)[pos.Int64()].Content + "，忌" + (*lhl)[neg.Int64()].Content + "。"
+	} else {
+		if pos.Int64()%2 == 0 {
+			return "今日:\n诸事不宜。请谨慎行事。"
+		} else {
+			return "今日:\n诸事皆宜。愿好运与你同行。"
+		}
+	}
+}
 
 func init() {
 	db, _ = scribble.New("../db", nil)
-	db.Read("datas", "laohuangli", &laohuangliList)
-}
-
-func saveLaohuangli() {
-	db.Write("datas", "laohuangli", &laohuangliList)
+	laohuangliList.init()
 }
 
 var b *tele.Bot
@@ -42,6 +75,7 @@ func fullName(u *tele.User) string {
 
 func main() {
 	fmt.Println("老黄历启动！")
+	gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 	pref := tele.Settings{
 		Token:  os.Getenv("BOT_TOKEN"),
 		Poller: &tele.LongPoller{Timeout: 5 * time.Second},
@@ -53,61 +87,37 @@ func main() {
 		return
 	}
 
-	b.Handle("/hello", func(c tele.Context) error {
-		return c.Send("Hello!")
-	})
-	b.Handle("/help", func(c tele.Context) error {
-		return cmdOnChat(c)
-	})
-	b.Handle("/start", func(c tele.Context) error {
-		return cmdOnChat(c)
-	})
-	b.Handle("/nominate", func(c tele.Context) error {
-		return cmdOnChat(c)
-	})
-	b.Handle("/list", func(c tele.Context) error {
-		return cmdOnChat(c)
-	})
+	for _, s := range []string{
+		"/help", "/start", "/nominate", "/list", "/listall", "/forcereadlocal",
+	} {
+		b.Handle(s, func(c tele.Context) error {
+			return cmdInChatHandler(c)
+		})
+	}
 
 	b.Handle(tele.OnText, func(c tele.Context) error {
-		return msgOnChat(c)
+		return msgInChatHandler(c)
 	})
 
+	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
+	voteApproveBtn := mk.Data("赞成", "voteApproveBtn")
+	voteRefuseBtn := mk.Data("反对", "voteRefuseBtn")
+	deleteBtn := mk.Data("删除", "deleteBtn")
+	b.Handle(&voteApproveBtn, voteApprove())
+	b.Handle(&voteRefuseBtn, voteRefuse())
+	b.Handle(&deleteBtn, msgDelete())
+
 	b.Handle(tele.OnQuery, func(c tele.Context) error {
-
-		pos := new(big.Int)
-		pos.SetBytes(sha1.New().Sum([]byte("positive-" + time.Now().In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
-		pos.Mod(pos, big.NewInt(int64(len(laohuangliList))))
-
-		neg := new(big.Int)
-		neg.SetBytes(sha1.New().Sum([]byte("negative-" + time.Now().In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(c.Sender().ID, 10))))
-		neg.Mod(neg, big.NewInt(int64(len(laohuangliList))))
-
 		results := make(tele.Results, 0)
-		if pos.Int64() != neg.Int64() {
-			results = append(results, &tele.ArticleResult{
-				Title: "今日我的老黄历",
-				Text:  fullName(c.Sender()) + " 今日:\n宜" + laohuangliList[pos.Int64()].Content + "，忌" + laohuangliList[neg.Int64()].Content + "。",
-			})
-		} else {
-			if pos.Int64()%2 == 0 {
-				results = append(results, &tele.ArticleResult{
-					Title: "今日我的老黄历",
-					Text:  fullName(c.Sender()) + " 今日:\n诸事不宜。请谨慎行事。",
-				})
-			} else {
-				results = append(results, &tele.ArticleResult{
-					Title: "今日我的老黄历",
-					Text:  fullName(c.Sender()) + " 今日:\n诸事皆宜。愿好运与你同行。",
-				})
-			}
-		}
 		for _, v := range nominations {
 			if v.NominatorID == c.Sender().ID {
 				results = append(results, buildVotes(v))
 			}
 		}
-
+		results = append(results, &tele.ArticleResult{
+			Title: "今日我的老黄历",
+			Text:  fullName(c.Sender()) + " " + laohuangliList.randomResultFromString(time.Now().In(gTimezone).Format("20060102")+"-"+strconv.FormatInt(c.Sender().ID, 10)),
+		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
 			CacheTime:         3,
