@@ -1,6 +1,6 @@
 
 
-.PHONY: default run stop clean
+.PHONY: default upgrade clean
 
 default:
 	docker compose up -d
