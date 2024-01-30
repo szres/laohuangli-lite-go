@@ -46,10 +46,10 @@ func msgDelete() func(c tele.Context) error {
 		return nil
 	}
 }
-func msg2User(userID int64, what any, opts ...any) error {
+func msg2User(userID int64, what any) error {
 	chat, chaterr := b.ChatByID(userID)
 	if chaterr == nil {
-		_, err := b.Send(chat, what, opts)
+		_, err := b.Send(chat, what, tele.ParseMode(tele.ModeMarkdownV2))
 		return err
 	}
 	return chaterr
@@ -101,13 +101,22 @@ func cmdInChatHandler(c tele.Context) error {
 		return c.Send("请输入你要提名的词条内容：")
 
 	case "/forcereadlocal":
+		if c.Sender().ID != gAdminID {
+			return c.Send("您没有权限使用此命令，请联系管理员获取权限")
+		}
 		laohuangliList.init()
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
 	case "/listall":
+		if c.Sender().ID != gAdminID {
+			return c.Send("您没有权限使用此命令，请联系管理员获取权限")
+		}
 		var msg string
 		for i, v := range nominations {
 			msg += fmt.Sprintf("%d. `%s` 提名词条 \"`%s`\" 赞成 `%d` 票，反对 `%d` 票\n结束时间: `%s`\n", i+1, v.NominatorName, v.Content, len(v.ApprovedUsers), len(v.RefusedUsers), v.voteEndTimeString())
+		}
+		if msg == "" {
+			msg = "当前没有提名任何词条"
 		}
 		return c.Send(msg, tele.ModeMarkdownV2)
 	}
@@ -151,6 +160,7 @@ func msgInChatHandler(c tele.Context) error {
 			mk.Inline(mk.Row(publishBtn, deleteBtn))
 			newNomination := nomination{
 				Content:       nominate,
+				CID:           c.Chat().ID,
 				NominatorName: senderName,
 				NominatorID:   c.Sender().ID,
 				Time:          time.Now().Unix(),
@@ -164,7 +174,6 @@ func msgInChatHandler(c tele.Context) error {
 				newNomination.UUID = uuid.NewV4().String()
 				newNomination.ID = msg.ID
 				nominations.add(newNomination)
-				b.Handle(&deleteBtn, msgDelete())
 			}
 			return err
 		}

@@ -14,6 +14,8 @@ import (
 type nomination struct {
 	UUID          string  `json:"uuid"`
 	ID            int     `json:"id"`
+	CID           int64   `json:"cid"`
+	LastVoteID    int     `json:"lastvoteid"`
 	Content       string  `json:"content"`
 	NominatorName string  `json:"nominator"`
 	NominatorID   int64   `json:"nominatorID"`
@@ -65,7 +67,7 @@ func (n *nomination) voteEndTimeString() string {
 	return time.Unix(n.Time+86400, 0).In(gTimezone).Format(gTimeFormat)
 }
 func (n nomination) MessageSig() (messageID string, chatID int64) {
-	return strconv.Itoa(n.ID), 0
+	return strconv.Itoa(n.ID), n.CID
 }
 
 func removeUserFromList(user int64, list []int64) []int64 {
@@ -139,7 +141,7 @@ func (ns *nominationSlice) saveRoutine() {
 }
 
 func (ns *nominationSlice) update() {
-	minute := time.NewTicker(1 * time.Minute)
+	minute := time.NewTicker(60 * time.Second)
 	for range minute.C {
 		newNominations := make(nominationSlice, 0)
 		for _, v := range *ns {
@@ -147,11 +149,11 @@ func (ns *nominationSlice) update() {
 				newNominations = append(newNominations, v)
 			} else {
 				if time.Now().Unix() >= v.Time+86400 && v.isPassed() || v.isQuickPassed() {
-					laohuangliList.add(laohuangli{Content: v.Content, Nominator: v.NominatorName})
+					laohuangliList.add(laohuangli{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
 				}
-				msg2User(v.NominatorID, v.buildResultMsgText(), tele.ModeMarkdownV2)
-				// TODO: Should edit last vote msg
-				b.Edit(v, v.buildVoteResultText(), &tele.ReplyMarkup{}, tele.ModeMarkdownV2)
+				msg2User(v.NominatorID, v.buildResultMsgText())
+				// TODO: Should edit last vote msg there
+				b.Edit(v, v.buildVoteResultText(), tele.ModeMarkdownV2)
 				ns.lazySave()
 			}
 		}
@@ -225,32 +227,42 @@ func dupNominationCheck(content string, nominator string) (result int, response 
 	return
 }
 
+func (n nomination) buildVoteMarkup() *tele.ReplyMarkup {
+	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
+	voteApproveBtn := mk.Data("赞成", "voteApproveBtn", n.UUID)
+	voteRefuseBtn := mk.Data("反对", "voteRefuseBtn", n.UUID)
+	mk.Inline(mk.Row(voteApproveBtn, voteRefuseBtn))
+	b.Handle(&voteApproveBtn, voteApprove())
+	b.Handle(&voteRefuseBtn, voteRefuse())
+	return mk
+}
+
 func (n nomination) buildVotingText() string {
 	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), n.voteEndTimeString())
 }
 
 func (n nomination) buildVoteResultText() string {
-	if n.isPassed() {
-		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
-	}
 	if n.isQuickPassed() {
 		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
 	}
 	if n.isQuickRefused() {
 		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速否决条件。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已被系统否决。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
 	}
+	if n.isPassed() {
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
+	}
 	return ""
 }
 
 func (n nomination) buildResultMsgText() string {
-	if n.isPassed() {
-		return fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
-	}
 	if n.isQuickPassed() {
 		return fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 获得赞成票 `%d` 票，反对票 `%d` 票，达到快速上线要求。现在已经正式上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
 	}
 	if n.isQuickRefused() {
 		return fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 获得赞成票 `%d` 票，反对票 `%d` 票，达到快速否决条件，已经被系统拒绝。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
+	}
+	if n.isPassed() {
+		return fmt.Sprintf("恭喜你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，达到上线要求。现在已经正式上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
 	}
 	return fmt.Sprintf("非常遗憾，你提名的词条 \"`%s`\" 最终投票结果为赞成票 `%d` 票，反对票 `%d` 票，未达到上线要求，无法上线。", n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
 }
@@ -270,6 +282,18 @@ func buildVotes(n nomination) (result *tele.ArticleResult) {
 	return
 }
 
+func buildVoteResultSimple(uuid string) string {
+	if uuid == "" {
+		return "投票已结束"
+	}
+	for _, v := range laohuangliList {
+		if v.UUID == uuid {
+			return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已经通过投票正式上线。", v.Nominator, v.Content)
+		}
+	}
+	return "投票已结束"
+}
+
 func voteApprove() func(c tele.Context) error {
 	return func(c tele.Context) (err error) {
 		for idx, n := range nominations {
@@ -279,20 +303,21 @@ func voteApprove() func(c tele.Context) error {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您取消了赞成票",
 					})
-					err = c.Edit(nominations[idx].buildVotingText(), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				} else {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您投出了赞成票",
 					})
-					err = c.Edit(nominations[idx].buildVotingText(), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				}
 			}
 		}
-		c.Edit(c.Text(), &tele.ReplyMarkup{}, tele.ModeMarkdownV2)
+		// TODO: show vote result better
+		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
-			Text: "投票已失效",
+			Text: "投票已结束",
 		})
 	}
 }
@@ -305,20 +330,21 @@ func voteRefuse() func(c tele.Context) error {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您取消了反对票",
 					})
-					err = c.Edit(nominations[idx].buildVotingText(), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				} else {
 					c.Respond(&tele.CallbackResponse{
 						Text: "您投出了反对票",
 					})
-					err = c.Edit(nominations[idx].buildVotingText(), tele.ModeMarkdownV2)
+					err = c.Edit(nominations[idx].buildVotingText(), nominations[idx].buildVoteMarkup(), tele.ModeMarkdownV2)
 					return
 				}
 			}
 		}
-		c.Edit(c.Text(), &tele.ReplyMarkup{}, tele.ModeMarkdownV2)
+		// TODO: show vote result better
+		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
-			Text: "投票已失效",
+			Text: "投票已结束",
 		})
 	}
 }

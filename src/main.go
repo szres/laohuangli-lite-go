@@ -14,6 +14,7 @@ import (
 )
 
 type laohuangli struct {
+	UUID      string `json:"uuid"`
 	Content   string `json:"content"`
 	Nominator string `json:"nominator"`
 }
@@ -22,6 +23,7 @@ type laohuangliSlice []laohuangli
 var (
 	gTimezone   *time.Location = time.FixedZone("CST", 8*60*60)
 	gTimeFormat string         = "2006-01-02 15:04"
+	gAdminID    int64
 )
 var laohuangliList laohuangliSlice
 var db *scribble.Driver
@@ -73,6 +75,7 @@ func fullName(u *tele.User) string {
 
 func main() {
 	fmt.Println("老黄历启动！")
+	gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 	pref := tele.Settings{
 		Token:  os.Getenv("BOT_TOKEN"),
 		Poller: &tele.LongPoller{Timeout: 5 * time.Second},
@@ -84,7 +87,6 @@ func main() {
 		return
 	}
 
-	// TODO: the listall and forcereadlocal command should works for admin only.
 	for _, s := range []string{
 		"/help", "/start", "/nominate", "/list", "/listall", "/forcereadlocal",
 	} {
@@ -100,8 +102,10 @@ func main() {
 	mk := &tele.ReplyMarkup{ResizeKeyboard: true}
 	voteApproveBtn := mk.Data("赞成", "voteApproveBtn")
 	voteRefuseBtn := mk.Data("反对", "voteRefuseBtn")
+	deleteBtn := mk.Data("删除", "deleteBtn")
 	b.Handle(&voteApproveBtn, voteApprove())
 	b.Handle(&voteRefuseBtn, voteRefuse())
+	b.Handle(&deleteBtn, msgDelete())
 
 	b.Handle(tele.OnQuery, func(c tele.Context) error {
 		results := make(tele.Results, 0)
