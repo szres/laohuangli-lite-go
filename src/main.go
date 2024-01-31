@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	kuma "github.com/Nigh/kuma-push"
 	scribble "github.com/nanobox-io/golang-scribble"
 	tele "gopkg.in/telebot.v3"
 )
@@ -83,25 +83,8 @@ func (lhl laohuangliSlice) update() {
 }
 
 func kumaPushInit() {
-	if gKumaPushURL != "" {
-		var responseTime int64 = 1
-		kumaPush := func() {
-			start := time.Now()
-			_, err := http.Get(gKumaPushURL + strconv.FormatInt(responseTime, 10))
-			if err == nil {
-				responseTime = time.Since(start).Milliseconds()
-			} else {
-				responseTime = 9999
-			}
-		}
-		kumaPush()
-		go func() {
-			minute := time.NewTicker(1 * time.Minute)
-			for range minute.C {
-				kumaPush()
-			}
-		}()
-	}
+	k := kuma.New(gKumaPushURL)
+	k.Start()
 }
 
 func init() {
