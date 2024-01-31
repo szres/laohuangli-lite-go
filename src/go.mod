@@ -3,6 +3,7 @@ module laohuangli-lite-go
 go 1.21.5
 
 require (
+	github.com/Nigh/kuma-push v0.1.0
 	github.com/adrg/strutil v0.3.1
 	github.com/nanobox-io/golang-scribble v0.0.0-20190309225732-aa3e7c118975
 	github.com/satori/go.uuid v1.2.0
