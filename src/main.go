@@ -37,13 +37,15 @@ var (
 	gToken       string
 )
 var laohuangliList laohuangliSlice
-var laohuangliValidLength int64
+var laohuangliCache map[int64]string
+
 var db *scribble.Driver
 
 func (lhl *laohuangliSlice) init() {
 	*lhl = make(laohuangliSlice, 0)
 	db.Read("datas", "laohuangli", lhl)
-	laohuangliValidLength = int64(len(*lhl))
+	laohuangliCache = make(map[int64]string)
+	db.Read("datas", "cache", &laohuangliCache)
 }
 func (lhl *laohuangliSlice) add(l laohuangli) {
 	*lhl = append(*lhl, l)
@@ -56,11 +58,11 @@ func (lhl *laohuangliSlice) remove(c string) bool {
 func (lhl *laohuangliSlice) randomResultFromString(s string) string {
 	pos := new(big.Int)
 	pos.SetBytes(sha1.New().Sum([]byte("positive-" + s)))
-	pos.Mod(pos, big.NewInt(laohuangliValidLength))
+	pos.Mod(pos, big.NewInt(int64(len(*lhl))))
 
 	neg := new(big.Int)
 	neg.SetBytes(sha1.New().Sum([]byte("negative-" + s)))
-	neg.Mod(neg, big.NewInt(laohuangliValidLength))
+	neg.Mod(neg, big.NewInt(int64(len(*lhl))))
 	if pos.Int64() != neg.Int64() {
 		return "今日:\n宜" + (*lhl)[pos.Int64()].Content + "，忌" + (*lhl)[neg.Int64()].Content + "。"
 	} else {
@@ -71,13 +73,23 @@ func (lhl *laohuangliSlice) randomResultFromString(s string) string {
 		}
 	}
 }
+
+func (lhl *laohuangliSlice) randomFromDateAndID(t time.Time, id int64) string {
+	_, exist := laohuangliCache[id]
+	if !exist {
+		laohuangliCache[id] = lhl.randomResultFromString(t.In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(id, 10))
+		db.Write("datas", "cache", &laohuangliCache)
+	}
+	return laohuangliCache[id]
+}
 func (lhl laohuangliSlice) update() {
-	minute := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(1 * time.Second)
 	day := time.Now().In(gTimezone).Day()
-	for range minute.C {
+	for range ticker.C {
 		if time.Now().In(gTimezone).Day() != day {
 			day = time.Now().In(gTimezone).Day()
-			laohuangliValidLength = int64(len(laohuangliList))
+			laohuangliCache = make(map[int64]string)
+			db.Write("datas", "cache", &laohuangliCache)
 		}
 	}
 }
@@ -157,7 +169,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
-			Text:  fullName(c.Sender()) + " " + laohuangliList.randomResultFromString(time.Now().In(gTimezone).Format("20060102")+"-"+strconv.FormatInt(c.Sender().ID, 10)),
+			Text:  fullName(c.Sender()) + " " + laohuangliList.randomFromDateAndID(time.Now(), c.Sender().ID),
 		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
