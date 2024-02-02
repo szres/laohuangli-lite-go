@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,6 +22,9 @@ type privateChat struct {
 }
 
 var chats = syncmap.Map{}
+var adminCMD []string
+var userCMD []string
+var chatCMD []string
 
 func chatLoad(id int64) privateChat {
 	var chat privateChat
@@ -30,6 +34,13 @@ func chatLoad(id int64) privateChat {
 }
 
 func init() {
+	adminCMD = []string{
+		"/listall", "/forcereadlocal", "/random",
+	}
+	userCMD = []string{
+		"/help", "/start", "/nominate", "/list",
+	}
+	chatCMD = append(adminCMD, userCMD...)
 	chats = syncmap.Map{}
 	go updateChats()
 }
@@ -65,6 +76,13 @@ func cmdInChatHandler(c tele.Context) error {
 		chat.Timeout = 9
 		chats.Store(c.Chat().ID, chat)
 	}()
+
+	if slices.Contains(adminCMD, c.Text()) {
+		if c.Sender().ID != gAdminID {
+			return c.Send("您没有权限使用此命令")
+		}
+	}
+
 	switch c.Text() {
 	case "/start":
 		fallthrough
@@ -101,16 +119,12 @@ func cmdInChatHandler(c tele.Context) error {
 		return c.Send("请输入你要提名的词条内容：")
 
 	case "/forcereadlocal":
-		if c.Sender().ID != gAdminID {
-			return c.Send("您没有权限使用此命令，请联系管理员获取权限")
-		}
 		laohuangliList.init()
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
+	case "/random":
+		return c.Send(laohuangliList.random(), tele.ModeMarkdownV2)
 	case "/listall":
-		if c.Sender().ID != gAdminID {
-			return c.Send("您没有权限使用此命令，请联系管理员获取权限")
-		}
 		var msg string
 		for i, v := range nominations {
 			msg += fmt.Sprintf("%d\\. `%s` 提名词条 \"`%s`\" 赞成 `%d` 票，反对 `%d` 票\n结束时间: `%s`\n", i+1, v.NominatorName, v.Content, len(v.ApprovedUsers), len(v.RefusedUsers), v.voteEndTimeString())
