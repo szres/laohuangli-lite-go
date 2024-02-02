@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/adrg/strutil"
-	"github.com/adrg/strutil/metrics"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -190,10 +189,8 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 			}
 		}
 	}
-	compareMethod := metrics.NewJaro()
-	compareMethod.CaseSensitive = false
 	for _, v := range laohuangliList {
-		similarity := strutil.Similarity(content, v.Content, compareMethod)
+		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
 			Content:    v.Content,
@@ -201,7 +198,7 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 		})
 	}
 	for _, v := range nominations {
-		similarity := strutil.Similarity(content, v.Content, compareMethod)
+		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
 			Content:    v.Content,
