@@ -174,6 +174,16 @@ type similarContent struct {
 
 func nominationValidCheck(content string, nominator string) (result int, response []string) {
 	response = make([]string, 0)
+	if len(content) > 64 {
+		result = -1
+		response = append(response, "提名内容过长，请控制在 64 个字以内")
+		return
+	}
+	if !templateValid(content) {
+		result = -1
+		response = append(response, "错误的模板格式或者不存在的模板变量，请检查更正后重新提交。")
+		return
+	}
 	similarNominations := make([]similarContent, 0)
 	similarSort := func() {
 		sort.Slice(similarNominations, func(i, j int) bool {
@@ -208,11 +218,6 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 	if len(similarNominations) > 0 && similarNominations[0].Similarity > 0.9 {
 		result = -1
 		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \""+similarNominations[0].Content+"\" 相似度过高，请更换提名的词条")
-		return
-	}
-	if len(content) > 32 {
-		result = -1
-		response = append(response, "提名内容过长，请控制在 32 个字以内")
 		return
 	}
 

@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha1"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
 	scribble "github.com/nanobox-io/golang-scribble"
+	"github.com/valyala/fasttemplate"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -32,6 +35,11 @@ type laohuangli struct {
 }
 type laohuangliSlice []laohuangli
 
+type laohuangliTemplate struct {
+	Desc   string   `json:"desc"`
+	Values []string `json:"values"`
+}
+
 var (
 	gTimezone    *time.Location = time.FixedZone("CST", 8*60*60)
 	gTimeFormat  string         = "2006-01-02 15:04"
@@ -42,6 +50,7 @@ var (
 	gStrCompareAlgo *metrics.Jaro
 )
 var laohuangliList laohuangliSlice
+var laohuangliTemplates map[string]laohuangliTemplate
 var laohuangliCache map[int64]string
 
 var db *scribble.Driver
@@ -51,6 +60,8 @@ func (lhl *laohuangliSlice) init() {
 	db.Read("datas", "laohuangli", lhl)
 	laohuangliCache = make(map[int64]string)
 	db.Read("datas", "cache", &laohuangliCache)
+	laohuangliTemplates = make(map[string]laohuangliTemplate)
+	db.Read("datas", "templates", &laohuangliTemplates)
 }
 func (lhl *laohuangliSlice) add(l laohuangli) {
 	*lhl = append(*lhl, l)
@@ -60,12 +71,48 @@ func (lhl *laohuangliSlice) remove(c string) bool {
 	// TODO:
 	return false
 }
+
+func templateValid(s string) bool {
+	valid := true
+	sTmpl := fasttemplate.New(s, "{{", "}}")
+	sTmpl.ExecuteFuncStringWithErr(func(w io.Writer, tag string) (int, error) {
+		if _, ok := laohuangliTemplates[tag]; ok {
+			return w.Write([]byte(""))
+		}
+		valid = false
+		return 0, errors.New("invalid template")
+	})
+	return valid
+}
 func (lhl *laohuangliSlice) random() string {
 	max := big.NewInt(int64(len(*lhl)))
 	p, _ := rand.Int(rand.Reader, max)
 	n, _ := rand.Int(rand.Reader, max)
 	posStr := (*lhl)[p.Int64()].Content
 	negStr := (*lhl)[n.Int64()].Content
+
+	buildStr := func(t *fasttemplate.Template) string {
+		return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
+			if _, ok := laohuangliTemplates[tag]; ok {
+				p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(laohuangliTemplates[tag].Values))))
+				return w.Write([]byte(laohuangliTemplates[tag].Values[p.Int64()]))
+			}
+			return w.Write([]byte("`模板错误`"))
+		})
+	}
+
+	if templateValid(posStr) {
+		posTmpl := fasttemplate.New(posStr, "{{", "}}")
+		posStr = buildStr(posTmpl)
+	} else {
+		return "发现错误模板，请上报管理员:\n" + posStr
+	}
+	if templateValid(negStr) {
+		negTmpl := fasttemplate.New(negStr, "{{", "}}")
+		negStr = buildStr(negTmpl)
+	} else {
+		return "发现错误模板，请上报管理员:\n" + negStr
+	}
 
 	if strutil.Similarity(posStr, negStr, gStrCompareAlgo) > 0.95 {
 		if p.Cmp(n) > 0 {
