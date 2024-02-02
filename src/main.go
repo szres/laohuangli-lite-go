@@ -220,9 +220,7 @@ func main() {
 		return
 	}
 
-	for _, s := range []string{
-		"/help", "/start", "/nominate", "/list", "/listall", "/forcereadlocal",
-	} {
+	for _, s := range chatCMD {
 		b.Handle(s, func(c tele.Context) error {
 			return cmdInChatHandler(c)
 		})
