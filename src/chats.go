@@ -113,7 +113,7 @@ func cmdInChatHandler(c tele.Context) error {
 		}
 		var msg string
 		for i, v := range nominations {
-			msg += fmt.Sprintf("%d. `%s` 提名词条 \"`%s`\" 赞成 `%d` 票，反对 `%d` 票\n结束时间: `%s`\n", i+1, v.NominatorName, v.Content, len(v.ApprovedUsers), len(v.RefusedUsers), v.voteEndTimeString())
+			msg += fmt.Sprintf("%d\\. `%s` 提名词条 \"`%s`\" 赞成 `%d` 票，反对 `%d` 票\n结束时间: `%s`\n", i+1, v.NominatorName, v.Content, len(v.ApprovedUsers), len(v.RefusedUsers), v.voteEndTimeString())
 		}
 		if msg == "" {
 			msg = "当前没有提名任何词条"
