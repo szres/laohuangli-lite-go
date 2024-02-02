@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	kuma "github.com/Nigh/kuma-push"
+	"github.com/adrg/strutil"
+	"github.com/adrg/strutil/metrics"
 	scribble "github.com/nanobox-io/golang-scribble"
 	tele "gopkg.in/telebot.v3"
 )
@@ -35,6 +38,8 @@ var (
 	gAdminID     int64
 	gKumaPushURL string
 	gToken       string
+
+	gStrCompareAlgo *metrics.Jaro
 )
 var laohuangliList laohuangliSlice
 var laohuangliCache map[int64]string
@@ -55,6 +60,24 @@ func (lhl *laohuangliSlice) remove(c string) bool {
 	// TODO:
 	return false
 }
+func (lhl *laohuangliSlice) random() string {
+	max := big.NewInt(int64(len(*lhl)))
+	p, _ := rand.Int(rand.Reader, max)
+	n, _ := rand.Int(rand.Reader, max)
+	posStr := (*lhl)[p.Int64()].Content
+	negStr := (*lhl)[n.Int64()].Content
+
+	if strutil.Similarity(posStr, negStr, gStrCompareAlgo) > 0.95 {
+		if p.Cmp(n) > 0 {
+			return "今日:\n诸事不宜。请谨慎行事。"
+		} else {
+			return "今日:\n诸事皆宜。愿好运与你同行。"
+		}
+	} else {
+		return "今日:\n宜" + posStr + "，忌" + negStr + "。"
+	}
+}
+
 func (lhl *laohuangliSlice) randomResultFromString(s string) string {
 	pos := new(big.Int)
 	pos.SetBytes(sha1.New().Sum([]byte("positive-" + s)))
@@ -78,6 +101,14 @@ func (lhl *laohuangliSlice) randomFromDateAndID(t time.Time, id int64) string {
 	_, exist := laohuangliCache[id]
 	if !exist {
 		laohuangliCache[id] = lhl.randomResultFromString(t.In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(id, 10))
+		db.Write("datas", "cache", &laohuangliCache)
+	}
+	return laohuangliCache[id]
+}
+func (lhl *laohuangliSlice) randomFromRandom(id int64) string {
+	_, exist := laohuangliCache[id]
+	if !exist {
+		laohuangliCache[id] = lhl.random()
 		db.Write("datas", "cache", &laohuangliCache)
 	}
 	return laohuangliCache[id]
@@ -114,6 +145,8 @@ func init() {
 		gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 		gKumaPushURL = os.Getenv("KUMA_PUSH_URL")
 	}
+	gStrCompareAlgo = metrics.NewJaro()
+	gStrCompareAlgo.CaseSensitive = false
 	fmt.Printf("gToken:%s\ngAdminID:%d\ngKumaPushURL:%s\n", gToken, gAdminID, gKumaPushURL)
 	kumaPushInit()
 }
@@ -169,7 +202,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
-			Text:  fullName(c.Sender()) + " " + laohuangliList.randomFromDateAndID(time.Now(), c.Sender().ID),
+			Text:  fullName(c.Sender()) + " " + laohuangliList.randomFromRandom(c.Sender().ID),
 		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
