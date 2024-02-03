@@ -35,7 +35,7 @@ func chatLoad(id int64) privateChat {
 
 func init() {
 	adminCMD = []string{
-		"/listall", "/forcereadlocal", "/random",
+		"/listall", "/forcereadlocal", "/random", "/randommore",
 	}
 	userCMD = []string{
 		"/help", "/start", "/nominate", "/list",
@@ -88,7 +88,11 @@ func cmdInChatHandler(c tele.Context) error {
 		fallthrough
 	case "/help":
 		chat.State = IDLE
-		return c.Send("提名新词条请发送 /nominate\n列举提名词条请发送 /list")
+		help := "提名新词条请发送 /nominate\n列举提名词条请发送 /list"
+		if c.Sender().ID == gAdminID {
+			help += "\n以下为管理员命令：\n列出所有提名词条请发送 /listall\n强制读取本地词条请发送 /forcereadlocal\n获取一个随机提名词条请发送 /random\n获取多个随机提名词条请发送 /randommore"
+		}
+		return c.Send(help)
 	case "/list":
 		chat.State = IDLE
 		existNomination := 0
@@ -124,7 +128,13 @@ func cmdInChatHandler(c tele.Context) error {
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
 	case "/random":
-		return c.Send(laohuangliListBanlanced.random(), tele.ModeMarkdownV2)
+		return c.Send(strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n"), tele.ModeMarkdownV2)
+	case "/randommore":
+		ret := strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n")
+		for i := 0; i < 9; i++ {
+			ret += "\n" + strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n")
+		}
+		return c.Send(ret, tele.ModeMarkdownV2)
 	case "/listall":
 		var msg string
 		for i, v := range nominations {
