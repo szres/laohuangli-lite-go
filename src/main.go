@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/big"
 	"os"
 	"strconv"
@@ -28,12 +29,12 @@ type testenv struct {
 
 var testEnv testenv
 
-type laohuangli struct {
+type entry struct {
 	UUID      string `json:"uuid"`
 	Content   string `json:"content"`
 	Nominator string `json:"nominator"`
 }
-type laohuangliSlice []laohuangli
+type laohuangliSlice []entry
 
 type laohuangliTemplate struct {
 	Desc   string   `json:"desc"`
@@ -49,7 +50,30 @@ var (
 
 	gStrCompareAlgo *metrics.Jaro
 )
+
+// 原始词条
 var laohuangliList laohuangliSlice
+
+// 频次均衡后的词条
+var laohuangliListBanlanced laohuangliSlice
+
+// 临时：由原始词条库生成均衡词条库
+func (lhl laohuangliSlice) banlance() laohuangliSlice {
+	banlanced := make(laohuangliSlice, 0)
+	for _, v := range lhl {
+		depth := templateDepth(v.Content)
+		if depth > 0 {
+			banlanced = append(banlanced, v)
+			if depth > 1 {
+				for i := 0; i < int(math.Round(math.Log(float64(depth)))); i++ {
+					banlanced = append(banlanced, v)
+				}
+			}
+		}
+	}
+	return banlanced
+}
+
 var laohuangliTemplates map[string]laohuangliTemplate
 var laohuangliCache map[int64]string
 
@@ -58,12 +82,8 @@ var db *scribble.Driver
 func (lhl *laohuangliSlice) init() {
 	*lhl = make(laohuangliSlice, 0)
 	db.Read("datas", "laohuangli", lhl)
-	laohuangliCache = make(map[int64]string)
-	db.Read("datas", "cache", &laohuangliCache)
-	laohuangliTemplates = make(map[string]laohuangliTemplate)
-	db.Read("datas", "templates", &laohuangliTemplates)
 }
-func (lhl *laohuangliSlice) add(l laohuangli) {
+func (lhl *laohuangliSlice) add(l entry) {
 	*lhl = append(*lhl, l)
 	db.Write("datas", "laohuangli", lhl)
 }
@@ -72,17 +92,18 @@ func (lhl *laohuangliSlice) remove(c string) bool {
 	return false
 }
 
-func templateValid(s string) bool {
-	valid := true
+func templateDepth(s string) int {
+	depth := 1
 	sTmpl := fasttemplate.New(s, "{{", "}}")
 	sTmpl.ExecuteFuncStringWithErr(func(w io.Writer, tag string) (int, error) {
 		if _, ok := laohuangliTemplates[tag]; ok {
+			depth += len(laohuangliTemplates[tag].Values)
 			return w.Write([]byte(""))
 		}
-		valid = false
+		depth = 0
 		return 0, errors.New("invalid template")
 	})
-	return valid
+	return depth
 }
 func (lhl *laohuangliSlice) random() string {
 	max := big.NewInt(int64(len(*lhl)))
@@ -101,13 +122,13 @@ func (lhl *laohuangliSlice) random() string {
 		})
 	}
 
-	if templateValid(posStr) {
+	if templateDepth(posStr) > 0 {
 		posTmpl := fasttemplate.New(posStr, "{{", "}}")
 		posStr = buildStr(posTmpl)
 	} else {
 		return "发现错误模板，请上报管理员:\n" + posStr
 	}
-	if templateValid(negStr) {
+	if templateDepth(negStr) > 0 {
 		negTmpl := fasttemplate.New(negStr, "{{", "}}")
 		negStr = buildStr(negTmpl)
 	} else {
@@ -179,7 +200,14 @@ func kumaPushInit() {
 
 func init() {
 	db, _ = scribble.New("../db", nil)
+
+	laohuangliCache = make(map[int64]string)
+	db.Read("datas", "cache", &laohuangliCache)
+	laohuangliTemplates = make(map[string]laohuangliTemplate)
+	db.Read("datas", "templates", &laohuangliTemplates)
+
 	laohuangliList.init()
+	laohuangliListBanlanced = laohuangliList.banlance()
 	go laohuangliList.update()
 
 	db.Read("test", "env", &testEnv)
@@ -247,7 +275,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
-			Text:  fullName(c.Sender()) + " " + laohuangliList.randomFromRandom(c.Sender().ID),
+			Text:  fullName(c.Sender()) + " " + laohuangliListBanlanced.randomFromRandom(c.Sender().ID),
 		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
