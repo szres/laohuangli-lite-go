@@ -2,7 +2,7 @@ FROM golang:alpine AS builder
 LABEL stage=builder
 WORKDIR $GOPATH/src/mypackage/myapp/
 COPY ./src/* ./
-ENV GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=https://goproxy.io,direct
 RUN go mod tidy
 RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app
 
