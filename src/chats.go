@@ -120,10 +120,11 @@ func cmdInChatHandler(c tele.Context) error {
 
 	case "/forcereadlocal":
 		laohuangliList.init()
+		laohuangliListBanlanced = laohuangliList.banlance()
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
 	case "/random":
-		return c.Send(laohuangliList.random(), tele.ModeMarkdownV2)
+		return c.Send(laohuangliListBanlanced.random(), tele.ModeMarkdownV2)
 	case "/listall":
 		var msg string
 		for i, v := range nominations {
