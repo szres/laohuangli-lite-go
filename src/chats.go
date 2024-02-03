@@ -212,6 +212,9 @@ func updateChats() {
 		chats.Range(func(i, v any) bool {
 			chat := v.(privateChat)
 			if chat.Timeout <= 0 {
+				if chatLoad(i.(int64)).State == NOMINATE {
+					msg2User(i.(int64), "提名已超时，若需重新提名，请再次发送 /nominate。")
+				}
 				chats.Delete(i)
 			} else {
 				chat.Timeout--
