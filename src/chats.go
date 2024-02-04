@@ -65,6 +65,7 @@ func msg2User(userID int64, what any) error {
 	}
 	return chaterr
 }
+
 func cmdInChatHandler(c tele.Context) error {
 	if _, ok := chats.Load(c.Chat().ID); !ok {
 		chats.Store(c.Chat().ID, privateChat{
@@ -83,6 +84,15 @@ func cmdInChatHandler(c tele.Context) error {
 		}
 	}
 
+	randLaoHuangLi := func() string {
+		a, b, err := laoHL.random()
+		errStr := ""
+		if err != nil {
+			errStr = err.Error()
+		}
+		return fmt.Sprintf("宜`%s` 忌`%s` Err:\\[%s\\]", a, b, errStr)
+	}
+
 	switch c.Text() {
 	case "/start":
 		fallthrough
@@ -90,7 +100,7 @@ func cmdInChatHandler(c tele.Context) error {
 		chat.State = IDLE
 		help := "提名新词条请发送 /nominate\n列举提名词条请发送 /list"
 		if c.Sender().ID == gAdminID {
-			help += "\n以下为管理员命令：\n列出所有提名词条请发送 /listall\n强制读取本地词条请发送 /forcereadlocal\n获取一个随机提名词条请发送 /random\n获取多个随机提名词条请发送 /randommore"
+			help += "\n\n以下为管理员命令：\n列出所有提名词条请发送 /listall\n强制读取本地词条请发送 /forcereadlocal\n获取一个随机提名词条请发送 /random\n获取多个随机提名词条请发送 /randommore"
 		}
 		return c.Send(help)
 	case "/list":
@@ -123,16 +133,15 @@ func cmdInChatHandler(c tele.Context) error {
 		return c.Send("请输入你要提名的词条内容：")
 
 	case "/forcereadlocal":
-		laohuangliList.init()
-		laohuangliListBanlanced = laohuangliList.banlance()
+		laoHL.init(db)
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
 	case "/random":
-		return c.Send(strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n"), tele.ModeMarkdownV2)
+		return c.Send(randLaoHuangLi(), tele.ModeMarkdownV2)
 	case "/randommore":
-		ret := strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n")
+		ret := randLaoHuangLi()
 		for i := 0; i < 9; i++ {
-			ret += "\n" + strings.TrimPrefix(laohuangliListBanlanced.random(), "今日:\n")
+			ret += "\n" + randLaoHuangLi()
 		}
 		return c.Send(ret, tele.ModeMarkdownV2)
 	case "/listall":
@@ -179,7 +188,7 @@ func msgInChatHandler(c tele.Context) error {
 		}
 		if success == 0 {
 			mk := &tele.ReplyMarkup{ResizeKeyboard: true}
-			publishBtn := mk.Query("发布", nominate)
+			publishBtn := mk.Query("发布", "nominate")
 			deleteBtn := mk.Data("删除", "deleteBtn")
 
 			mk.Inline(mk.Row(publishBtn, deleteBtn))

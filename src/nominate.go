@@ -149,7 +149,7 @@ func (ns *nominationSlice) update() {
 				newNominations = append(newNominations, v)
 			} else {
 				if time.Now().Unix() >= v.Time+86400 && v.isPassed() || v.isQuickPassed() {
-					laohuangliList.add(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
+					laoHL.add(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
 					laohuangliUpdated = true
 				}
 				msg2User(v.NominatorID, v.buildResultMsgText())
@@ -159,7 +159,8 @@ func (ns *nominationSlice) update() {
 			}
 		}
 		if laohuangliUpdated {
-			laohuangliListBanlanced = laohuangliList.banlance()
+			laoHL.save()
+			laoHL.createBanlancedEntries()
 		}
 		*ns = newNominations
 		ns.saveRoutine()
@@ -184,7 +185,7 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 		response = append(response, "提名内容过长，请控制在 64 个字以内")
 		return
 	}
-	if templateDepth(content) <= 0 {
+	if laoHL.getTemplateDepth(content) <= 0 {
 		result = -1
 		response = append(response, "错误的模板格式或者不存在的模板变量，请检查更正后重新提交。")
 		return
@@ -204,7 +205,7 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 			}
 		}
 	}
-	for _, v := range laohuangliList {
+	for _, v := range laoHL.entries {
 		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
@@ -298,7 +299,7 @@ func buildVoteResultSimple(uuid string) string {
 	if uuid == "" {
 		return "投票已结束"
 	}
-	for _, v := range laohuangliList {
+	for _, v := range laoHL.entries {
 		if v.UUID == uuid {
 			return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已经通过投票正式上线。", v.Nominator, v.Content)
 		}
