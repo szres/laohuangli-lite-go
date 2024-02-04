@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"io"
@@ -29,16 +28,26 @@ type testenv struct {
 
 var testEnv testenv
 
+type laohuangli struct {
+	// 原始词条
+	entries []entry
+	// 频次均衡后的词条
+	entriesBanlanced []entry
+	templates        map[string]laohuangliTemplate
+	cache            laohuangliCache
+}
 type entry struct {
 	UUID      string `json:"uuid"`
 	Content   string `json:"content"`
 	Nominator string `json:"nominator"`
 }
-type laohuangliSlice []entry
-
 type laohuangliTemplate struct {
 	Desc   string   `json:"desc"`
 	Values []string `json:"values"`
+}
+type laohuangliCache struct {
+	Date string           `json:"date"`
+	ID   map[int64]string `json:"caches"`
 }
 
 var (
@@ -51,53 +60,25 @@ var (
 	gStrCompareAlgo *metrics.Jaro
 )
 
-// 原始词条
-var laohuangliList laohuangliSlice
-
-// 频次均衡后的词条
-var laohuangliListBanlanced laohuangliSlice
-
-// 临时：由原始词条库生成均衡词条库
-func (lhl laohuangliSlice) banlance() laohuangliSlice {
-	banlanced := make(laohuangliSlice, 0)
-	for _, v := range lhl {
-		depth := templateDepth(v.Content)
-		if depth > 0 {
-			banlanced = append(banlanced, v)
-			if depth > 1 {
-				for i := 0; i < int(math.Round(math.Log(float64(depth)))); i++ {
-					banlanced = append(banlanced, v)
-				}
-			}
-		}
-	}
-	return banlanced
-}
-
-var laohuangliTemplates map[string]laohuangliTemplate
-var laohuangliCache map[int64]string
-
 var db *scribble.Driver
 
-func (lhl *laohuangliSlice) init() {
-	*lhl = make(laohuangliSlice, 0)
-	db.Read("datas", "laohuangli", lhl)
-}
-func (lhl *laohuangliSlice) add(l entry) {
-	*lhl = append(*lhl, l)
-	db.Write("datas", "laohuangli", lhl)
-}
-func (lhl *laohuangliSlice) remove(c string) bool {
-	// TODO:
-	return false
+func (lhl *laohuangli) init(db *scribble.Driver) {
+	*lhl = laohuangli{
+		entries: make([]entry, 0),
+	}
+	db.Read("datas", "laohuangli", &lhl.entries)
+	db.Read("datas", "templates", &lhl.templates)
+	db.Read("datas", "cache", &lhl.cache)
+	lhl.createBanlancedEntries()
 }
 
-func templateDepth(s string) int {
+// 计算字符串的模板实例深度之和
+func (lhl *laohuangli) getTemplateDepth(s string) int {
 	depth := 1
 	sTmpl := fasttemplate.New(s, "{{", "}}")
 	sTmpl.ExecuteFuncStringWithErr(func(w io.Writer, tag string) (int, error) {
-		if _, ok := laohuangliTemplates[tag]; ok {
-			depth += len(laohuangliTemplates[tag].Values)
+		if _, ok := lhl.templates[tag]; ok {
+			depth += len(lhl.templates[tag].Values)
 			return w.Write([]byte(""))
 		}
 		depth = 0
@@ -105,110 +86,118 @@ func templateDepth(s string) int {
 	})
 	return depth
 }
-func (lhl *laohuangliSlice) random() string {
-	max := big.NewInt(int64(len(*lhl)))
+
+// 由原始词条库生成均衡词条库
+func (lhl *laohuangli) createBanlancedEntries() {
+	lhl.entriesBanlanced = make([]entry, 0)
+	for _, v := range lhl.entries {
+		depth := lhl.getTemplateDepth(v.Content)
+		if depth > 0 {
+			lhl.entriesBanlanced = append(lhl.entriesBanlanced, v)
+			if depth > 1 {
+				for i := 0; i < int(math.Round(math.Log(float64(depth)))); i++ {
+					lhl.entriesBanlanced = append(lhl.entriesBanlanced, v)
+				}
+			}
+		}
+	}
+}
+
+func (lhl *laohuangli) add(l entry) {
+	lhl.entries = append(lhl.entries, l)
+}
+func (lhl *laohuangli) save() {
+	db.Write("datas", "laohuangli", lhl.entries)
+}
+func (lhl *laohuangli) remove(c string) bool {
+	// TODO:
+	return false
+}
+
+func (lhl *laohuangli) random() (posStr string, negStr string, err error) {
+	if len(lhl.entriesBanlanced) == 0 {
+		return "", "", errors.New("没有词条")
+	}
+	max := big.NewInt(int64(len(lhl.entriesBanlanced)))
 	p, _ := rand.Int(rand.Reader, max)
 	n, _ := rand.Int(rand.Reader, max)
-	posStr := (*lhl)[p.Int64()].Content
-	negStr := (*lhl)[n.Int64()].Content
+	posStr = lhl.entriesBanlanced[p.Int64()].Content
+	negStr = lhl.entriesBanlanced[n.Int64()].Content
 
 	buildStr := func(t *fasttemplate.Template) string {
 		return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
-			if _, ok := laohuangliTemplates[tag]; ok {
-				p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(laohuangliTemplates[tag].Values))))
-				return w.Write([]byte(laohuangliTemplates[tag].Values[p.Int64()]))
+			if _, ok := lhl.templates[tag]; ok {
+				p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lhl.templates[tag].Values))))
+				return w.Write([]byte(lhl.templates[tag].Values[p.Int64()]))
 			}
-			return w.Write([]byte("`模板错误`"))
+			return w.Write([]byte("`错误模板`"))
 		})
 	}
 
-	if templateDepth(posStr) > 0 {
+	if lhl.getTemplateDepth(posStr) > 0 {
 		posTmpl := fasttemplate.New(posStr, "{{", "}}")
 		posStr = buildStr(posTmpl)
 	} else {
-		return "发现错误模板，请上报管理员:\n" + posStr
+		return "", "", errors.New(posStr)
 	}
-	if templateDepth(negStr) > 0 {
+	if lhl.getTemplateDepth(negStr) > 0 {
 		negTmpl := fasttemplate.New(negStr, "{{", "}}")
 		negStr = buildStr(negTmpl)
 	} else {
-		return "发现错误模板，请上报管理员:\n" + negStr
+		return "", "", errors.New(negStr)
 	}
 
 	if strutil.Similarity(posStr, negStr, gStrCompareAlgo) > 0.95 {
 		if p.Cmp(n) > 0 {
-			return "今日:\n诸事不宜。请谨慎行事。"
+			return "", "诸事不宜。请谨慎行事。", nil
 		} else {
-			return "今日:\n诸事皆宜。愿好运与你同行。"
+			return "诸事皆宜。愿好运与你同行。", "", nil
 		}
 	} else {
-		return "今日:\n宜" + posStr + "，忌" + negStr + "。"
+		return posStr, negStr, nil
 	}
 }
 
-func (lhl *laohuangliSlice) randomResultFromString(s string) string {
-	pos := new(big.Int)
-	pos.SetBytes(sha1.New().Sum([]byte("positive-" + s)))
-	pos.Mod(pos, big.NewInt(int64(len(*lhl))))
-
-	neg := new(big.Int)
-	neg.SetBytes(sha1.New().Sum([]byte("negative-" + s)))
-	neg.Mod(neg, big.NewInt(int64(len(*lhl))))
-	if pos.Int64() != neg.Int64() {
-		return "今日:\n宜" + (*lhl)[pos.Int64()].Content + "，忌" + (*lhl)[neg.Int64()].Content + "。"
-	} else {
-		if pos.Int64()%2 == 0 {
-			return "今日:\n诸事不宜。请谨慎行事。"
-		} else {
-			return "今日:\n诸事皆宜。愿好运与你同行。"
+func (lhl *laohuangli) randomToday(id int64) string {
+	_, exist := lhl.cache.ID[id]
+	if !exist {
+		p, n, err := lhl.random()
+		if err != nil {
+			return "发现错误模板，请上报管理员:\n" + err.Error()
 		}
+		if p != "" && n != "" {
+			lhl.cache.ID[id] = "今日:\n宜" + p + "，忌" + n
+		} else {
+			lhl.cache.ID[id] = "今日:\n" + p + n
+		}
+		db.Write("datas", "cache", lhl.cache)
 	}
+	return lhl.cache.ID[id]
 }
-
-func (lhl *laohuangliSlice) randomFromDateAndID(t time.Time, id int64) string {
-	_, exist := laohuangliCache[id]
-	if !exist {
-		laohuangliCache[id] = lhl.randomResultFromString(t.In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(id, 10))
-		db.Write("datas", "cache", &laohuangliCache)
-	}
-	return laohuangliCache[id]
-}
-func (lhl *laohuangliSlice) randomFromRandom(id int64) string {
-	_, exist := laohuangliCache[id]
-	if !exist {
-		laohuangliCache[id] = lhl.random()
-		db.Write("datas", "cache", &laohuangliCache)
-	}
-	return laohuangliCache[id]
-}
-func (lhl laohuangliSlice) update() {
-	ticker := time.NewTicker(1 * time.Second)
-	day := time.Now().In(gTimezone).Day()
+func (lhl *laohuangli) update() {
+	ticker := time.NewTicker(5 * time.Second)
 	for range ticker.C {
-		if time.Now().In(gTimezone).Day() != day {
-			day = time.Now().In(gTimezone).Day()
-			laohuangliCache = make(map[int64]string)
-			db.Write("datas", "cache", &laohuangliCache)
+		date := time.Now().In(gTimezone).Format("2006-01-02")
+		if date != lhl.cache.Date {
+			lhl.cache = laohuangliCache{Date: time.Now().In(gTimezone).Format("2006-01-02"), ID: make(map[int64]string)}
+			db.Write("datas", "cache", lhl.cache)
 		}
 	}
 }
-
-func kumaPushInit() {
-	k := kuma.New(gKumaPushURL)
-	k.Start()
+func (lhl *laohuangli) start() {
+	go lhl.update()
 }
+func (lhl *laohuangli) stop() {
+	// TODO:
+}
+
+var laoHL laohuangli
 
 func init() {
 	db, _ = scribble.New("../db", nil)
 
-	laohuangliCache = make(map[int64]string)
-	db.Read("datas", "cache", &laohuangliCache)
-	laohuangliTemplates = make(map[string]laohuangliTemplate)
-	db.Read("datas", "templates", &laohuangliTemplates)
-
-	laohuangliList.init()
-	laohuangliListBanlanced = laohuangliList.banlance()
-	go laohuangliList.update()
+	laoHL.init(db)
+	laoHL.start()
 
 	db.Read("test", "env", &testEnv)
 	if testEnv.Token != "" {
@@ -223,7 +212,8 @@ func init() {
 	gStrCompareAlgo = metrics.NewJaro()
 	gStrCompareAlgo.CaseSensitive = false
 	fmt.Printf("gToken:%s\ngAdminID:%d\ngKumaPushURL:%s\n", gToken, gAdminID, gKumaPushURL)
-	kumaPushInit()
+	k := kuma.New(gKumaPushURL)
+	k.Start()
 }
 
 var b *tele.Bot
@@ -275,7 +265,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
-			Text:  fullName(c.Sender()) + " " + laohuangliListBanlanced.randomFromRandom(c.Sender().ID),
+			Text:  fullName(c.Sender()) + " " + laoHL.randomToday(c.Sender().ID),
 		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
