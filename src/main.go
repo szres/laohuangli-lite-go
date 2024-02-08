@@ -179,10 +179,11 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 			return "发现错误模板，请上报管理员:\n" + err.Error()
 		}
 		if p != "" && n != "" {
-			lhl.cache.Push(id, name, "今日:\n宜"+p+"，忌"+n)
+			r = "今日:\n宜" + p + "，忌" + n
 		} else {
-			lhl.cache.Push(id, name, "今日:\n"+p+n)
+			r = "今日:\n" + p + n
 		}
+		lhl.cache.Push(id, name, r)
 		lhl.cache.Save()
 	}
 	return r
