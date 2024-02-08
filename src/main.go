@@ -189,10 +189,12 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 }
 func (lhl *laohuangli) update() {
 	ticker := time.NewTicker(5 * time.Second)
-	date := time.Now().In(gTimezone).Format("2006-01-02")
 	for range ticker.C {
+		date := time.Now().In(gTimezone).Format("2006-01-02")
 		if date != lhl.cache.Date {
-			date = time.Now().In(gTimezone).Format("2006-01-02")
+			if len(lhl.cache.Caches) > 0 {
+				lhl.cache.Backup(lhl.cache.Date)
+			}
 			lhl.cache.New()
 			lhl.cache.Save()
 		}
@@ -214,6 +216,9 @@ func (c *laohuangliCache) New() {
 }
 func (c *laohuangliCache) Save() {
 	db.Write("datas", "cache", c)
+}
+func (c *laohuangliCache) Backup(date string) {
+	db.Write("history", date, c)
 }
 func (c *laohuangliCache) Exist(id int64) string {
 	_, exist := c.Caches[id]
