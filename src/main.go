@@ -47,9 +47,13 @@ type laohuangliTemplate struct {
 	Desc   string   `json:"desc"`
 	Values []string `json:"values"`
 }
+type laohuangliResult struct {
+	Name   string `json:"name"`
+	Result string `json:"result"`
+}
 type laohuangliCache struct {
-	Date string           `json:"date"`
-	ID   map[int64]string `json:"caches"`
+	Date   string                     `json:"date"`
+	Caches map[int64]laohuangliResult `json:"caches"`
 }
 
 var (
@@ -71,7 +75,7 @@ func (lhl *laohuangli) init(db *scribble.Driver) {
 	db.Read("datas", "laohuangli", &lhl.entries)
 	db.Read("datas", "laohuangli-user", &lhl.entriesUser)
 	db.Read("datas", "templates", &lhl.templates)
-	db.Read("datas", "cache", &lhl.cache)
+	lhl.cache.Init()
 	lhl.createBanlancedEntries()
 }
 
@@ -167,29 +171,30 @@ func (lhl *laohuangli) random() (posStr string, negStr string, err error) {
 	}
 }
 
-func (lhl *laohuangli) randomToday(id int64) string {
-	_, exist := lhl.cache.ID[id]
-	if !exist {
+func (lhl *laohuangli) randomToday(id int64, name string) string {
+	r := lhl.cache.Exist(id)
+	if len(r) == 0 {
 		p, n, err := lhl.random()
 		if err != nil {
 			return "发现错误模板，请上报管理员:\n" + err.Error()
 		}
 		if p != "" && n != "" {
-			lhl.cache.ID[id] = "今日:\n宜" + p + "，忌" + n
+			lhl.cache.Push(id, name, "今日:\n宜"+p+"，忌"+n)
 		} else {
-			lhl.cache.ID[id] = "今日:\n" + p + n
+			lhl.cache.Push(id, name, "今日:\n"+p+n)
 		}
-		db.Write("datas", "cache", lhl.cache)
+		lhl.cache.Save()
 	}
-	return lhl.cache.ID[id]
+	return r
 }
 func (lhl *laohuangli) update() {
 	ticker := time.NewTicker(5 * time.Second)
+	date := time.Now().In(gTimezone).Format("2006-01-02")
 	for range ticker.C {
-		date := time.Now().In(gTimezone).Format("2006-01-02")
 		if date != lhl.cache.Date {
-			lhl.cache = laohuangliCache{Date: time.Now().In(gTimezone).Format("2006-01-02"), ID: make(map[int64]string)}
-			db.Write("datas", "cache", lhl.cache)
+			date = time.Now().In(gTimezone).Format("2006-01-02")
+			lhl.cache.New()
+			lhl.cache.Save()
 		}
 	}
 }
@@ -198,6 +203,28 @@ func (lhl *laohuangli) start() {
 }
 func (lhl *laohuangli) stop() {
 	// TODO:
+}
+
+// TODO: 记录历史算命结果
+func (c *laohuangliCache) Init() {
+	db.Read("datas", "cache", c)
+}
+func (c *laohuangliCache) New() {
+	*c = laohuangliCache{Date: time.Now().In(gTimezone).Format("2006-01-02"), Caches: make(map[int64]laohuangliResult)}
+}
+func (c *laohuangliCache) Save() {
+	db.Write("datas", "cache", c)
+}
+func (c *laohuangliCache) Exist(id int64) string {
+	_, exist := c.Caches[id]
+	if exist {
+		return c.Caches[id].Result
+	}
+	return ""
+}
+func (c *laohuangliCache) Push(id int64, name string, content string) {
+	result := laohuangliResult{Name: name, Result: content}
+	c.Caches[id] = result
 }
 
 var laoHL laohuangli
@@ -274,7 +301,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
-			Text:  fullName(c.Sender()) + " " + laoHL.randomToday(c.Sender().ID),
+			Text:  fullName(c.Sender()) + " " + laoHL.randomToday(c.Sender().ID, fullName(c.Sender())),
 		})
 		return c.Answer(&tele.QueryResponse{
 			Results:           results,
