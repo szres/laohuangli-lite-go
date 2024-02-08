@@ -29,8 +29,10 @@ type testenv struct {
 var testEnv testenv
 
 type laohuangli struct {
-	// 原始词条
+	// 本地词条
 	entries []entry
+	// 用户提名词条
+	entriesUser []entry
 	// 频次均衡后的词条
 	entriesBanlanced []entry
 	templates        map[string]laohuangliTemplate
@@ -67,6 +69,7 @@ func (lhl *laohuangli) init(db *scribble.Driver) {
 		entries: make([]entry, 0),
 	}
 	db.Read("datas", "laohuangli", &lhl.entries)
+	db.Read("datas", "laohuangli-user", &lhl.entriesUser)
 	db.Read("datas", "templates", &lhl.templates)
 	db.Read("datas", "cache", &lhl.cache)
 	lhl.createBanlancedEntries()
@@ -90,6 +93,12 @@ func (lhl *laohuangli) getTemplateDepth(s string) int {
 // 由原始词条库生成均衡词条库
 func (lhl *laohuangli) createBanlancedEntries() {
 	lhl.entriesBanlanced = make([]entry, 0)
+
+	// 用户提名词条2倍权重
+	for i := 0; i < 2; i++ {
+		lhl.entriesBanlanced = append(lhl.entriesBanlanced, lhl.entriesUser...)
+	}
+
 	for _, v := range lhl.entries {
 		depth := lhl.getTemplateDepth(v.Content)
 		if depth > 0 {
@@ -104,10 +113,10 @@ func (lhl *laohuangli) createBanlancedEntries() {
 }
 
 func (lhl *laohuangli) add(l entry) {
-	lhl.entries = append(lhl.entries, l)
+	lhl.entriesUser = append(lhl.entriesUser, l)
 }
 func (lhl *laohuangli) save() {
-	db.Write("datas", "laohuangli", lhl.entries)
+	db.Write("datas", "laohuangli-user", lhl.entriesUser)
 }
 func (lhl *laohuangli) remove(c string) bool {
 	// TODO:
