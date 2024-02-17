@@ -80,9 +80,21 @@ func (lhl *laohuangli) pushBanlancedEntries(e entry) {
 		lhl.entriesBanlanced = append(lhl.entriesBanlanced, e)
 	}
 }
+func removeDuplicate[T comparable](sliceList []T) []T {
+	allKeys := make(map[T]bool)
+	list := []T{}
+	for _, item := range sliceList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
 
 // 均衡词条库移除
 func (lhl *laohuangli) deleteBanlancedEntries(s []int64) {
+	s = removeDuplicate(s)
 	sort.Slice(s, func(i, j int) bool {
 		return s[i] > s[j]
 	})
