@@ -15,7 +15,7 @@ func TestRandom(t *testing.T) {
 	fmt.Println("Length of entries", len(laoHL.entries))
 	fmt.Println("Length of entriesBanlanced", len(laoHL.entriesBanlanced))
 	for i := 0; i < 10; i++ {
-		a, b, err := laoHL.random()
+		a, b, err := laoHL.randomThenDelete()
 		errStr := ""
 		if err != nil {
 			errStr = err.Error()
@@ -26,7 +26,7 @@ func TestRandom(t *testing.T) {
 }
 func BenchmarkRandom(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		laoHL.random()
+		laoHL.randomThenDelete()
 	}
 }
 

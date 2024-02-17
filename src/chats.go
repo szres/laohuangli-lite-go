@@ -85,12 +85,11 @@ func cmdInChatHandler(c tele.Context) error {
 	}
 
 	randLaoHuangLi := func() string {
-		a, b, err := laoHL.random()
-		errStr := ""
+		a, b, err := laoHL.randomNotDelete()
 		if err != nil {
-			errStr = err.Error()
+			return fmt.Sprintf("错误:\\[`%s`\\]", err.Error())
 		}
-		return fmt.Sprintf("宜`%s` 忌`%s` Err:\\[%s\\]", a, b, errStr)
+		return fmt.Sprintf("宜`%s` 忌`%s`", a, b)
 	}
 
 	switch c.Text() {
@@ -139,9 +138,9 @@ func cmdInChatHandler(c tele.Context) error {
 	case "/random":
 		return c.Send(randLaoHuangLi(), tele.ModeMarkdownV2)
 	case "/randommore":
-		ret := randLaoHuangLi()
-		for i := 0; i < 9; i++ {
-			ret += "\n" + randLaoHuangLi()
+		ret := "Result:"
+		for i := 0; i < 10; i++ {
+			ret += fmt.Sprintf("\n%02d: %s", i, randLaoHuangLi())
 		}
 		return c.Send(ret, tele.ModeMarkdownV2)
 	case "/listall":

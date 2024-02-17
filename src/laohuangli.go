@@ -80,9 +80,21 @@ func (lhl *laohuangli) pushBanlancedEntries(e entry) {
 		lhl.entriesBanlanced = append(lhl.entriesBanlanced, e)
 	}
 }
+func removeDuplicate[T comparable](sliceList []T) []T {
+	allKeys := make(map[T]bool)
+	list := []T{}
+	for _, item := range sliceList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
 
 // 均衡词条库移除
 func (lhl *laohuangli) deleteBanlancedEntries(s []int64) {
+	s = removeDuplicate(s)
 	sort.Slice(s, func(i, j int) bool {
 		return s[i] > s[j]
 	})
@@ -106,19 +118,27 @@ func (lhl *laohuangli) remove(c string) bool {
 	return false
 }
 
-func (lhl *laohuangli) random() (posStr string, negStr string, err error) {
+func (lhl *laohuangli) randomEntryIndex() (idx int64, err error) {
 	if len(lhl.entriesBanlanced) == 0 {
 		lhl.createBanlancedEntries()
 		if len(lhl.entriesBanlanced) == 0 {
-			return "", "", errors.New("没有词条")
+			return 0, errors.New("没有词条")
 		}
 	}
 	max := big.NewInt(int64(len(lhl.entriesBanlanced)))
-	p, _ := rand.Int(rand.Reader, max)
-	n, _ := rand.Int(rand.Reader, max)
-	posStr = lhl.entriesBanlanced[p.Int64()].Content
-	negStr = lhl.entriesBanlanced[n.Int64()].Content
-	lhl.deleteBanlancedEntries([]int64{p.Int64(), n.Int64()})
+	i, _ := rand.Int(rand.Reader, max)
+	idx = i.Int64()
+	return
+}
+func (lhl *laohuangli) randomStringAndIndex() (p64 int64, n64 int64, posStr string, negStr string, err error) {
+	p64, _ = lhl.randomEntryIndex()
+	n64, err = lhl.randomEntryIndex()
+	if err != nil {
+		return
+	}
+	posStr = lhl.entriesBanlanced[p64].Content
+	negStr = lhl.entriesBanlanced[n64].Content
+	lhl.deleteBanlancedEntries([]int64{p64, n64})
 
 	buildStr := func(t *fasttemplate.Template) string {
 		return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
@@ -134,30 +154,45 @@ func (lhl *laohuangli) random() (posStr string, negStr string, err error) {
 		posTmpl := fasttemplate.New(posStr, "{{", "}}")
 		posStr = buildStr(posTmpl)
 	} else {
-		return "", "", errors.New(posStr)
+		err = errors.New(posStr)
+		return
 	}
 	if lhl.getTemplateDepth(negStr) > 0 {
 		negTmpl := fasttemplate.New(negStr, "{{", "}}")
 		negStr = buildStr(negTmpl)
 	} else {
-		return "", "", errors.New(negStr)
+		err = errors.New(negStr)
+		return
 	}
 
 	if strutil.Similarity(posStr, negStr, gStrCompareAlgo) > 0.95 {
-		if p.Cmp(n) > 0 {
-			return "", "诸事不宜。请谨慎行事。", nil
+		if p64 < n64 {
+			posStr = ""
+			negStr = "诸事不宜。请谨慎行事。"
+			return
 		} else {
-			return "诸事皆宜。愿好运与你同行。", "", nil
+			posStr = "诸事皆宜。愿好运与你同行。"
+			negStr = ""
+			return
 		}
 	} else {
-		return posStr, negStr, nil
+		return
 	}
+}
+func (lhl *laohuangli) randomNotDelete() (posStr string, negStr string, err error) {
+	_, _, posStr, negStr, err = lhl.randomStringAndIndex()
+	return
+}
+func (lhl *laohuangli) randomThenDelete() (posStr string, negStr string, err error) {
+	p, n, posStr, negStr, err := lhl.randomStringAndIndex()
+	lhl.deleteBanlancedEntries([]int64{p, n})
+	return
 }
 
 func (lhl *laohuangli) randomToday(id int64, name string) string {
 	r := lhl.cache.Exist(id)
 	if len(r) == 0 {
-		p, n, err := lhl.random()
+		p, n, err := lhl.randomThenDelete()
 		if err != nil {
 			return "发现错误模板，请上报管理员:\n" + err.Error()
 		}
