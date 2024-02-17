@@ -150,6 +150,7 @@ func (ns *nominationSlice) update() {
 			} else {
 				if time.Now().Unix() >= v.Time+86400 && v.isPassed() || v.isQuickPassed() {
 					laoHL.add(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
+					laoHL.pushBanlancedEntries(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
 					laohuangliUpdated = true
 				}
 				msg2User(v.NominatorID, v.buildResultMsgText())
@@ -160,7 +161,6 @@ func (ns *nominationSlice) update() {
 		}
 		if laohuangliUpdated {
 			laoHL.save()
-			laoHL.createBanlancedEntries()
 		}
 		*ns = newNominations
 		ns.saveRoutine()
