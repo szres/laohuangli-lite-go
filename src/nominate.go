@@ -51,13 +51,13 @@ func (n *nomination) isPassed() bool {
 	return false
 }
 func (n *nomination) isQuickPassed() bool {
-	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 10 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 7 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
 		return true
 	}
 	return false
 }
 func (n *nomination) isQuickRefused() bool {
-	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 10 && len(n.RefusedUsers) > len(n.ApprovedUsers) {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 5 && len(n.RefusedUsers) > len(n.ApprovedUsers) {
 		return true
 	}
 	return false
