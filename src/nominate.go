@@ -51,13 +51,13 @@ func (n *nomination) isPassed() bool {
 	return false
 }
 func (n *nomination) isQuickPassed() bool {
-	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 10 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 7 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
 		return true
 	}
 	return false
 }
 func (n *nomination) isQuickRefused() bool {
-	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 10 && len(n.RefusedUsers) > len(n.ApprovedUsers) {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 5 && len(n.RefusedUsers) > len(n.ApprovedUsers) {
 		return true
 	}
 	return false
@@ -150,6 +150,7 @@ func (ns *nominationSlice) update() {
 			} else {
 				if time.Now().Unix() >= v.Time+86400 && v.isPassed() || v.isQuickPassed() {
 					laoHL.add(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
+					laoHL.pushBanlancedEntries(entry{UUID: v.UUID, Content: v.Content, Nominator: v.NominatorName})
 					laohuangliUpdated = true
 				}
 				msg2User(v.NominatorID, v.buildResultMsgText())
@@ -160,7 +161,6 @@ func (ns *nominationSlice) update() {
 		}
 		if laohuangliUpdated {
 			laoHL.save()
-			laoHL.createBanlancedEntries()
 		}
 		*ns = newNominations
 		ns.saveRoutine()
