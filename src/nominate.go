@@ -229,6 +229,16 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 			Nominator:  v.NominatorName,
 		})
 	}
+	for _, t := range laoHL.templates {
+		for _, v := range t.Values {
+			similarity := strutil.Similarity(content, v, gStrCompareAlgo)
+			similarPush(similarContent{
+				Similarity: similarity,
+				Content:    v,
+				Nominator:  "{{" + t.Desc + "}}模板",
+			})
+		}
+	}
 	if len(similarNominations) > 0 && similarNominations[0].Similarity > 0.9 {
 		result = -1
 		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \""+similarNominations[0].Content+"\" 相似度过高，请更换提名的词条")
