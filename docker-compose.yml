@@ -1,16 +1,21 @@
 version: '3'
 
-networks:
-  laohuang:
-
 services:
-  laohuangli:
-    build: .
+  tgbot:
+    container_name: laohuangli-bot
+    build: ./tgbot
     volumes:
       - ./db:/db
       - /etc/ssl/certs:/etc/ssl/certs
     env_file:
       - .env
     restart: unless-stopped
-    networks:
-      - laohuang
+  website:
+    container_name: laohuangli-website
+    build: ./website
+    user: "node"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    ports:
+      - 4090:3000

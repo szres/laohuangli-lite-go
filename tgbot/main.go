@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -68,6 +69,13 @@ func init() {
 	fmt.Printf("gToken:%s\ngAdminID:%d\ngKumaPushURL:%s\n", gToken, gAdminID, gKumaPushURL)
 	k := kuma.New(gKumaPushURL)
 	k.Start()
+	go func() {
+		http.Handle("/", http.FileServer(http.Dir("../db/datas")))
+		err := http.ListenAndServe(":80", nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 }
 
 var b *tele.Bot
