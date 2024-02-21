@@ -2,6 +2,7 @@ version: '3'
 
 services:
   tgbot:
+    container_name: laohuangli-bot
     build: ./tgbot
     volumes:
       - ./db:/db
@@ -9,3 +10,12 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+  website:
+    container_name: laohuangli-website
+    build: ./website
+    user: "node"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    ports:
+      - 4090:3000
