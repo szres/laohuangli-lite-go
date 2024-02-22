@@ -194,7 +194,7 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 	if len(r) == 0 {
 		p, n, err := lhl.randomThenDelete()
 		if err != nil {
-			return "发现错误模板，请上报管理员:\n" + err.Error()
+			return "发现错误，请上报管理员:\n[ERROR]" + err.Error()
 		}
 		if p != "" && n != "" {
 			r = "今日:\n宜" + p + "，忌" + n
