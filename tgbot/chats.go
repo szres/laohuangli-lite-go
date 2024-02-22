@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -98,6 +99,10 @@ func cmdInChatHandler(c tele.Context) error {
 	case "/help":
 		chat.State = IDLE
 		help := "提名新词条请发送 /nominate\n列举提名词条请发送 /list"
+		webDomain := os.Getenv("WEB_DOMAIN")
+		if webDomain != "" {
+			help += "\n\n查看其他信息请访问老黄历网站: " + webDomain
+		}
 		if c.Sender().ID == gAdminID {
 			help += "\n\n以下为管理员命令：\n列出所有提名词条请发送 /listall\n强制读取本地词条请发送 /forcereadlocal\n获取一个随机提名词条请发送 /random\n获取多个随机提名词条请发送 /randommore"
 		}
