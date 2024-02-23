@@ -15,4 +15,5 @@ require (
 require (
 	github.com/jcelliott/lumber v0.0.0-20160324203708-dd349441af25 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	gonum.org/v1/gonum v0.14.0 // indirect
 )
