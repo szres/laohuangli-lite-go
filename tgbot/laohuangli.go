@@ -131,6 +131,31 @@ func (lhl *laohuangli) randomEntryIndex() (idx int64, err error) {
 	idx = i.Int64()
 	return
 }
+
+func buildStrFromTmpl(t *fasttemplate.Template, tmpl map[string]laohuangliTemplate) string {
+	return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
+		if _, ok := tmpl[tag]; ok {
+			p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(tmpl[tag].Values))))
+			return w.Write([]byte(tmpl[tag].Values[p.Int64()]))
+		}
+		return w.Write([]byte("`错误模板`"))
+	})
+}
+func buildStrFromTmplWoDup(t *fasttemplate.Template, tmpl map[string]laohuangliTemplate) string {
+	// 此方法会移除掉模板中选中的项，使得每个模板项只会被选择一次
+	return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
+		if _, ok := tmpl[tag]; ok {
+			p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(tmpl[tag].Values))))
+			ret := tmpl[tag].Values[p.Int64()]
+			temp := tmpl[tag]
+			temp.Values = append(tmpl[tag].Values[:p.Int64()], tmpl[tag].Values[p.Int64()+1:]...)
+			tmpl[tag] = temp
+			return w.Write([]byte(ret))
+		}
+		return w.Write([]byte("`错误模板`"))
+	})
+}
+
 func (lhl *laohuangli) randomStringAndIndex() (p64 int64, n64 int64, posStr string, negStr string, err error) {
 	p64, _ = lhl.randomEntryIndex()
 	n64, err = lhl.randomEntryIndex()
@@ -141,26 +166,16 @@ func (lhl *laohuangli) randomStringAndIndex() (p64 int64, n64 int64, posStr stri
 	negStr = lhl.entriesBanlanced[n64].Content
 	lhl.deleteBanlancedEntries([]int64{p64, n64})
 
-	buildStr := func(t *fasttemplate.Template) string {
-		return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
-			if _, ok := lhl.templates[tag]; ok {
-				p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lhl.templates[tag].Values))))
-				return w.Write([]byte(lhl.templates[tag].Values[p.Int64()]))
-			}
-			return w.Write([]byte("`错误模板`"))
-		})
-	}
-
 	if lhl.getTemplateDepth(posStr) > 0 {
 		posTmpl := fasttemplate.New(posStr, "{{", "}}")
-		posStr = buildStr(posTmpl)
+		posStr = buildStrFromTmpl(posTmpl, lhl.templates)
 	} else {
 		err = errors.New(posStr)
 		return
 	}
 	if lhl.getTemplateDepth(negStr) > 0 {
 		negTmpl := fasttemplate.New(negStr, "{{", "}}")
-		negStr = buildStr(negTmpl)
+		negStr = buildStrFromTmpl(negTmpl, lhl.templates)
 	} else {
 		err = errors.New(negStr)
 		return
@@ -198,9 +213,9 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 			return "发现错误，请上报管理员:\n[ERROR]" + err.Error()
 		}
 		if p != "" && n != "" {
-			r = "今日:\n宜" + p + "，忌" + n
+			r = "今日：\n宜" + p + "，忌" + n
 		} else {
-			r = "今日:\n" + p + n
+			r = "今日：\n" + p + n
 		}
 		lhl.cache.Push(id, name, r)
 		lhl.cache.Save()
@@ -244,22 +259,21 @@ type laohuangliCache struct {
 }
 
 func (tr todayResults) String() (output string) {
-	output = "穿搭: 宜 " + tr.Clothing.Positive + "，忌 " + tr.Clothing.Negative + "。\n"
-	output += "饮食: 宜 " + tr.Food.Positive + "，忌 " + tr.Food.Negative + "。\n"
-	output += "出行: 宜 " + tr.Travel.Positive + "，忌 " + tr.Travel.Negative + "。\n"
+	sh := []string{
+		"未分配内存中的随机比特揭示了今日的运程",
+		"磁盘坏道中的损坏数据揭示了今日的运势",
+		"昨天的群聊内容预示了今天的命运走向",
+		"手机麦克风收集到的录音数据预测了今天的最佳策略",
+	}
+	randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(sh))))
+	output = sh[randInt.Int64()] + "：\n"
+	output += "👗今日穿搭👗\n宜" + tr.Clothing.Positive + "，\n忌" + tr.Clothing.Negative + "。\n"
+	output += "🍔今日饮食🍔\n宜" + tr.Food.Positive + "，\n忌" + tr.Food.Negative + "。\n"
+	output += "🚗今日出行🚗\n宜" + tr.Travel.Positive + "，\n忌" + tr.Travel.Negative + "。\n"
 	return
 }
 
 func (tr *todayResults) NewRand() {
-	buildStr := func(t *fasttemplate.Template) string {
-		return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
-			if _, ok := laoHL.templates[tag]; ok {
-				p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(laoHL.templates[tag].Values))))
-				return w.Write([]byte(laoHL.templates[tag].Values[p.Int64()]))
-			}
-			return w.Write([]byte("`错误模板`"))
-		})
-	}
 	*tr = todayResults{
 		Clothing: results{
 			Positive: "穿衣",
@@ -272,48 +286,79 @@ func (tr *todayResults) NewRand() {
 			Negative: "蠕动"}}
 
 	// 衣 - 互斥特征组
-	headWear := []string{
-		"染成{{haircolor}}毛",
-		"{{haircolor}}色{{hairstyle}}",
-		"{{hairstyle}}配{{hat}}",
-		"{{haircolor}}色{{hairstyle}}配{{hat}}",
-		"{{hairstyle}}配{{haircolor}}色{{hat}}",
-		"{{haircolor}}色{{hairstyle}}配{{haircolor}}色{{hat}}",
-		"{{hairstyle}}",
-		"{{hairstyle}}",
-		"{{hat}}",
-		"{{hat}}",
+	headWear := [][]string{
+		{
+			"{{haircolor}}色头发",
+			"{{haircolor}}色{{hairstyle}}",
+			"{{hairstyle}}",
+		},
+		{
+			"{{hat}}",
+			"{{color1c}}色{{hat}}",
+			"{{color1c}}色帽子",
+		},
 	}
-	bodyWear := []string{
-		"{{topwear}}",
-		"{{bottomwear}}",
-		"{{color1c}}色{{topwear}}",
-		"{{color1c}}色{{bottomwear}}",
-		"{{topwear}}配{{bottomwear}}",
-		"{{color1c}}色{{topwear}}配{{color1c}}色{{bottomwear}}",
+	bodyWear := [][]string{
+		{
+			"{{topwear}}",
+			"{{color1c}}色上衣",
+			"{{color1c}}色{{topwear}}",
+		},
+		{
+			"{{bottomwear}}",
+			"{{color1c}}色下装",
+			"{{color1c}}色{{bottomwear}}",
+		},
+	}
+	fullbodyWear := []string{
 		"{{bodywear}}",
 		"{{color1c}}色{{bodywear}}",
+		"{{color1c}}色套装",
 	}
 	underWear := []string{
 		"{{underwear}}",
 		"{{color1c}}色{{underwear}}",
+		"{{color1c}}色内衣",
 	}
 	legWear := []string{
 		"{{socks}}",
 		"{{color1c}}色{{socks}}",
+		"{{color1c}}色袜子",
 	}
 	footWear := []string{
 		"{{shoe}}",
 		"{{color1c}}色{{shoe}}",
+		"{{color1c}}色鞋子",
 	}
-	// 组合互斥组
-	wear := [][]string{
-		headWear,
-		bodyWear,
-		underWear,
-		legWear,
-		footWear,
+
+	var randInt *big.Int
+	// 从[]slice中随机选取n个不重复的slice n>0
+	getRandomFromSliceSlice := func(slice [][]string) (ret []string) {
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
+		list := combin.Combinations(len(slice), int(randInt.Int64())+1)
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(list))))
+		listPick := list[randInt.Int64()]
+		for _, k := range listPick {
+			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(slice[k]))))
+			ret = append(ret, slice[k][randInt.Int64()])
+		}
+		return
 	}
+	getRandomOneFromSlice := func(slice []string) (ret string) {
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
+		return slice[randInt.Int64()]
+	}
+	getRandomNFromSlice := func(slice []string) (ret []string) {
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
+		list := combin.Combinations(len(slice), int(randInt.Int64())+1)
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(list))))
+		listPick := list[randInt.Int64()]
+		for _, k := range listPick {
+			ret = append(ret, slice[k])
+		}
+		return
+	}
+
 	// 食 - 互斥特征组
 	food := []string{
 		"吃{{food}}",
@@ -321,6 +366,9 @@ func (tr *todayResults) NewRand() {
 		"去{{wheretoeat}}吃{{food}}",
 		"去{{wheretoeat}}喝{{drink}}",
 		"吃{{food}}喝{{drink}}",
+		"就着{{drink}}吃{{food}}",
+		"{{food}}与{{food}}同食",
+		"{{drink}}与{{drink}}同饮",
 	}
 	// 行 - 互斥特征组
 	travel := []string{
@@ -333,13 +381,33 @@ func (tr *todayResults) NewRand() {
 	foodStr := []string{}
 	travelStr := []string{}
 	for i := 0; i < 2; i++ {
-		randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(wear))))
-		wearList := combin.Combinations(len(wear), int(randInt.Int64())+1)
-		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(wearList))))
+		wearList := make([]string, 0)
+		wearList = append(wearList, getRandomFromSliceSlice(headWear)...)
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(256)))
+		if randInt.Cmp(big.NewInt(128)) >= 0 {
+			wearList = append(wearList, getRandomFromSliceSlice(bodyWear)...)
+		} else {
+			wearList = append(wearList, getRandomOneFromSlice(fullbodyWear))
+		}
+		wearList = append(wearList, getRandomOneFromSlice(underWear))
+		wearList = append(wearList, getRandomOneFromSlice(legWear))
+		wearList = append(wearList, getRandomOneFromSlice(footWear))
+		wearList = getRandomNFromSlice(wearList)
+
 		wearStr = append(wearStr, "")
-		for _, idx := range wearList[randInt.Int64()] {
-			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(wear[idx]))))
-			wearStr[i] += wear[idx][randInt.Int64()] + " "
+		for k, v := range wearList {
+			conc := ""
+			if k == 1 {
+				conc = "配"
+			}
+			if k > 1 {
+				if k == len(wearList)-1 {
+					conc = "和"
+				} else {
+					conc = "、"
+				}
+			}
+			wearStr[i] += conc + v
 		}
 		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(food))))
 		foodStr = append(foodStr, food[randInt.Int64()])
@@ -350,13 +418,16 @@ func (tr *todayResults) NewRand() {
 			return
 		}
 	}
-
-	wearStrPos := buildStr(fasttemplate.New(wearStr[0], "{{", "}}"))
-	foodStrPos := buildStr(fasttemplate.New(foodStr[0], "{{", "}}"))
-	travelStrPos := buildStr(fasttemplate.New(travelStr[0], "{{", "}}"))
-	wearStrNeg := buildStr(fasttemplate.New(wearStr[1], "{{", "}}"))
-	foodStrNeg := buildStr(fasttemplate.New(foodStr[1], "{{", "}}"))
-	travelStrNeg := buildStr(fasttemplate.New(travelStr[1], "{{", "}}"))
+	tmpl := make(map[string]laohuangliTemplate)
+	for k, v := range laoHL.templates {
+		tmpl[k] = v
+	}
+	wearStrPos := buildStrFromTmplWoDup(fasttemplate.New(wearStr[0], "{{", "}}"), tmpl)
+	foodStrPos := buildStrFromTmplWoDup(fasttemplate.New(foodStr[0], "{{", "}}"), tmpl)
+	travelStrPos := buildStrFromTmplWoDup(fasttemplate.New(travelStr[0], "{{", "}}"), tmpl)
+	wearStrNeg := buildStrFromTmplWoDup(fasttemplate.New(wearStr[1], "{{", "}}"), tmpl)
+	foodStrNeg := buildStrFromTmplWoDup(fasttemplate.New(foodStr[1], "{{", "}}"), tmpl)
+	travelStrNeg := buildStrFromTmplWoDup(fasttemplate.New(travelStr[1], "{{", "}}"), tmpl)
 	*tr = todayResults{
 		Clothing: results{
 			Positive: wearStrPos,
