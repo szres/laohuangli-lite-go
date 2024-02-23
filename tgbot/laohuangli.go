@@ -266,10 +266,10 @@ func (tr todayResults) String() (output string) {
 		"手机麦克风收集到的录音数据预测了今天的最佳策略",
 	}
 	randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(sh))))
-	output = sh[randInt.Int64()] + "：\n"
-	output += "👗今日穿搭👗\n宜" + tr.Clothing.Positive + "，\n忌" + tr.Clothing.Negative + "。\n"
-	output += "🍔今日饮食🍔\n宜" + tr.Food.Positive + "，\n忌" + tr.Food.Negative + "。\n"
-	output += "🚗今日出行🚗\n宜" + tr.Travel.Positive + "，\n忌" + tr.Travel.Negative + "。\n"
+	output = sh[randInt.Int64()] + "：\n\n"
+	output += "👗今日穿搭👗\n宜" + tr.Clothing.Positive + "，\n忌" + tr.Clothing.Negative + "。\n\n"
+	output += "🍔今日饮食🍔\n宜" + tr.Food.Positive + "，\n忌" + tr.Food.Negative + "。\n\n"
+	output += "🚗今日出行🚗\n宜" + tr.Travel.Positive + "，\n忌" + tr.Travel.Negative + "。"
 	return
 }
 
