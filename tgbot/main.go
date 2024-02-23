@@ -126,6 +126,10 @@ func main() {
 			}
 		}
 		results = append(results, &tele.ArticleResult{
+			Title: "今日众生老黄历",
+			Text:  "众生今日:\n" + laoHL.cache.Today.String(),
+		})
+		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",
 			Text:  fullName(c.Sender()) + " " + laoHL.randomToday(c.Sender().ID, fullName(c.Sender())),
 		})

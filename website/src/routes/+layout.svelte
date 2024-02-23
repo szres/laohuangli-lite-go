@@ -2,7 +2,7 @@
 	import '../app.css';
 </script>
 
-<div class="flex flex-col h-screen w-screen">
+<div class="flex flex-col h-screen w-full">
 	<div class="navbar bg-base-300">
 		<div class="flex-1">
 			<a href="/" class="btn btn-ghost text-xl">新老黄历</a>
