@@ -164,7 +164,6 @@ func (lhl *laohuangli) randomStringAndIndex() (p64 int64, n64 int64, posStr stri
 	}
 	posStr = lhl.entriesBanlanced[p64].Content
 	negStr = lhl.entriesBanlanced[n64].Content
-	lhl.deleteBanlancedEntries([]int64{p64, n64})
 
 	if lhl.getTemplateDepth(posStr) > 0 {
 		posTmpl := fasttemplate.New(posStr, "{{", "}}")
@@ -208,14 +207,24 @@ func (lhl *laohuangli) randomThenDelete() (posStr string, negStr string, err err
 func (lhl *laohuangli) randomToday(id int64, name string) string {
 	r := lhl.cache.Exist(id)
 	if len(r) == 0 {
+		r = "今日：\n"
+		pp := 1
+		np := 1
+		if len(lhl.cache.Caches) < 2 {
+			pp += 1
+			np += 1
+		}
+		if len(lhl.cache.Caches) < 1 {
+			pp += 2
+		}
 		p, n, err := lhl.randomThenDelete()
 		if err != nil {
 			return "发现错误，请上报管理员:\n[ERROR]" + err.Error()
 		}
 		if p != "" && n != "" {
-			r = "今日：\n宜" + p + "，忌" + n
+			r += "宜" + p + "，忌" + n
 		} else {
-			r = "今日：\n" + p + n
+			r += p + n
 		}
 		lhl.cache.Push(id, name, r)
 		lhl.cache.Save()
