@@ -86,7 +86,8 @@ func cmdInChatHandler(c tele.Context) error {
 	}
 
 	randLaoHuangLi := func() string {
-		a, b, err := laoHL.randomNotDelete()
+		a, err := laoHL.randomNotDelete()
+		b, _ := laoHL.randomNotDelete()
 		if err != nil {
 			return fmt.Sprintf("错误:\\[`%s`\\]", err.Error())
 		}

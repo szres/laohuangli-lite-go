@@ -156,51 +156,29 @@ func buildStrFromTmplWoDup(t *fasttemplate.Template, tmpl map[string]laohuangliT
 	})
 }
 
-func (lhl *laohuangli) randomStringAndIndex() (p64 int64, n64 int64, posStr string, negStr string, err error) {
-	p64, _ = lhl.randomEntryIndex()
-	n64, err = lhl.randomEntryIndex()
+func (lhl *laohuangli) randomStringAndIndex() (idx int64, str string, err error) {
+	idx, err = lhl.randomEntryIndex()
 	if err != nil {
 		return
 	}
-	posStr = lhl.entriesBanlanced[p64].Content
-	negStr = lhl.entriesBanlanced[n64].Content
+	str = lhl.entriesBanlanced[idx].Content
 
-	if lhl.getTemplateDepth(posStr) > 0 {
-		posTmpl := fasttemplate.New(posStr, "{{", "}}")
-		posStr = buildStrFromTmpl(posTmpl, lhl.templates)
+	if lhl.getTemplateDepth(str) > 0 {
+		posTmpl := fasttemplate.New(str, "{{", "}}")
+		str = buildStrFromTmpl(posTmpl, lhl.templates)
 	} else {
-		err = errors.New(posStr)
+		err = errors.New(str)
 		return
 	}
-	if lhl.getTemplateDepth(negStr) > 0 {
-		negTmpl := fasttemplate.New(negStr, "{{", "}}")
-		negStr = buildStrFromTmpl(negTmpl, lhl.templates)
-	} else {
-		err = errors.New(negStr)
-		return
-	}
-
-	if strutil.Similarity(posStr, negStr, gStrCompareAlgo) > 0.95 {
-		if p64 < n64 {
-			posStr = ""
-			negStr = "诸事不宜。请谨慎行事。"
-			return
-		} else {
-			posStr = "诸事皆宜。愿好运与你同行。"
-			negStr = ""
-			return
-		}
-	} else {
-		return
-	}
-}
-func (lhl *laohuangli) randomNotDelete() (posStr string, negStr string, err error) {
-	_, _, posStr, negStr, err = lhl.randomStringAndIndex()
 	return
 }
-func (lhl *laohuangli) randomThenDelete() (posStr string, negStr string, err error) {
-	p, n, posStr, negStr, err := lhl.randomStringAndIndex()
-	lhl.deleteBanlancedEntries([]int64{p, n})
+func (lhl *laohuangli) randomNotDelete() (str string, err error) {
+	_, str, err = lhl.randomStringAndIndex()
+	return
+}
+func (lhl *laohuangli) randomThenDelete() (str string, err error) {
+	n, str, err := lhl.randomStringAndIndex()
+	lhl.deleteBanlancedEntries([]int64{n})
 	return
 }
 
@@ -392,8 +370,8 @@ func (tr *todayResults) NewRand() {
 	for i := 0; i < 2; i++ {
 		wearList := make([]string, 0)
 		wearList = append(wearList, getRandomFromSliceSlice(headWear)...)
-		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(256)))
-		if randInt.Cmp(big.NewInt(128)) >= 0 {
+		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(25600)))
+		if randInt.Cmp(big.NewInt(19200)) >= 0 {
 			wearList = append(wearList, getRandomFromSliceSlice(bodyWear)...)
 		} else {
 			wearList = append(wearList, getRandomOneFromSlice(fullbodyWear))
