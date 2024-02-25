@@ -177,7 +177,7 @@ func msgInChatHandler(c tele.Context) error {
 	switch chat.State {
 	case NOMINATE:
 		nominate := strings.TrimSpace(c.Text())
-		if len(nominate) < 1 {
+		if len([]rune(nominate)) < 1 {
 			return c.Send("提名内容太短，请重新提名。")
 		}
 		if nominate[0] == '/' {

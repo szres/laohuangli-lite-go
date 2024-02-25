@@ -180,7 +180,7 @@ type similarContent struct {
 
 func nominationValidCheck(content string, nominator string) (result int, response []string) {
 	response = make([]string, 0)
-	if len(content) > 64 {
+	if len([]rune(content)) > 64 {
 		result = -1
 		response = append(response, "提名内容过长，请控制在 64 个字以内")
 		return
