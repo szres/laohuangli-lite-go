@@ -36,7 +36,7 @@
 
 <div class="select-none text-xl lg:text-3xl text-center font-bold">众生</div>
 <div class="flex flex-col mt-2">
-	{#if livingList.length > 0}
+	{#if livingList.length > 5}
 		{#each livingList.slice(0, 5) as content (content.id)}
 			<div
 				animate:flip={{ delay: 500 }}
@@ -49,6 +49,6 @@
 			</div>
 		{/each}
 	{:else}
-		<div class="w-full text-sm text-center mt-1">命途未定</div>
+		<div class="w-full text-sm text-center mt-1">众生命途未定，请稍候片刻</div>
 	{/if}
 </div>
