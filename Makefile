@@ -1,14 +1,17 @@
 
 
-.PHONY: default upgrade clean
+.PHONY: default down upgrade clean
 
 default:
-	docker compose up -d
+	docker compose up $(service) -d
+
+down:
+	docker compose down $(service)
 
 upgrade:
-	docker compose build
-	docker compose down
-	docker compose up -d
+	docker compose build $(service)
+	docker compose down $(service)
+	docker compose up $(service) -d
 	docker image prune -f
 
 clean:
