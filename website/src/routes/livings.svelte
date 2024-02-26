@@ -6,24 +6,57 @@
 	let roller;
 	let livingPool = [];
 	let livingList = [];
+	let livingListRemove = 0;
+	function poolCreateFrom(cache) {
+		livingPool.splice(0, livingPool.length);
+		for (const k in cache) {
+			let one = { id: k, ...cache[k] };
+			if (!livingPool.hasOwnProperty(k)) {
+				livingPool.push(one);
+			}
+		}
+		livingListRemove = livingList.length;
+	}
+	const shuffle = (array) => {
+		for (let i = array.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[array[i], array[j]] = [array[j], array[i]];
+		}
+		return array;
+	};
+	$: poolCreateFrom(caches);
 	onMount(() => {
 		let rollerCount = 0;
 		let roll = () => {
 			if (livingPool.length > 0) {
-				let randIdx = Math.floor(Math.random() * (livingPool.length - 1));
-				livingList.unshift(livingPool[randIdx]);
-				livingPool.splice(randIdx, 1);
-				livingList = livingList;
+				livingPool = shuffle(livingPool);
+				let exist = false;
+				for (const item of livingList) {
+					if (item.id === livingPool[0]?.id) {
+						exist = true;
+						break;
+					}
+				}
+				if (!exist) {
+					livingList = [livingPool.shift(), ...livingList];
+				}
 			}
-			if (livingList.length > 5 || (livingPool.length == 0 && livingList.length > 2)) {
-				livingPool.push(livingList.pop());
+			console.log(livingPool);
+			console.log(livingList);
+			if (
+				livingList.length > 5 ||
+				(livingPool.length == 0 && livingList.length > 2) ||
+				livingListRemove > 0
+			) {
+				let item = livingList.pop();
+				if (livingListRemove > 0) {
+					livingListRemove--;
+				} else {
+					livingPool.push(item);
+				}
 				livingList = livingList;
 			}
 		};
-		for (const k in caches) {
-			let one = { id: k, ...caches[k] };
-			livingPool.push(one);
-		}
 		roller = setInterval(() => {
 			if (rollerCount++ > 20 + Math.floor(Math.random() * 40)) {
 				rollerCount = 0;
@@ -34,6 +67,10 @@
 	onDestroy(() => {
 		clearInterval(roller);
 	});
+	export async function load({ parent }) {
+		const { a, b } = await parent();
+		return { c: a + b };
+	}
 </script>
 
 <div class="select-none text-xl lg:text-3xl text-center font-bold">众生</div>

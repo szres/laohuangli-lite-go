@@ -1,10 +1,25 @@
 <script>
 	export let data;
-	const caches = data.caches;
-	const today = data.today;
-	const date = data.date;
+	$: caches = data.caches;
+	$: today = data.today;
+	$: date = data.date;
 	import Today from './today.svelte';
 	import Livings from './livings.svelte';
+
+	import { onMount, onDestroy } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
+	async function dataUpdate() {
+		invalidateAll()
+	}
+	let update;
+	onMount(() => {
+		update = setInterval(() => {
+			dataUpdate();
+		}, 120000);
+	});
+	onDestroy(() => {
+		clearInterval(update);
+	});
 </script>
 
 <div class="flex justify-center w-full h-full">
