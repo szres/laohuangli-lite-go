@@ -9,7 +9,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	async function dataUpdate() {
-		invalidateAll()
+		invalidateAll();
 	}
 	let update;
 	onMount(() => {
