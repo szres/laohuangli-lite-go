@@ -41,8 +41,6 @@
 					livingList = [livingPool.shift(), ...livingList];
 				}
 			}
-			console.log(livingPool);
-			console.log(livingList);
 			if (
 				livingList.length > 5 ||
 				(livingPool.length == 0 && livingList.length > 2) ||
