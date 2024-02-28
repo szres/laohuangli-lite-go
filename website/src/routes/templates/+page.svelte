@@ -1,9 +1,12 @@
 <script>
 	import { fade } from 'svelte/transition';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	export let data;
-	const templates = data;
-
+	onMount(() => {
+		for (const key in templates) {
+			templates[key].values = [...new Set(templates[key].values)];
+		}
+	});
 	const exampleSentences = [
 		'吃着{{drink}}在{{brand}}店里玩{{game}}',
 		'喝着{{drink}}在{{brand}}店里玩{{game}}',
