@@ -2,21 +2,50 @@
 	import { fade } from 'svelte/transition';
 	import { onDestroy, onMount } from 'svelte';
 	export let data;
+	const templatesRegexp = /{{(\w+)}}/g;
+	const { templates, entrys, entrysUser } = data;
+	let entryCount = 0;
+	let entryMetaCount = 0;
+	let entryCountUser = 0;
+	let entryMetaCountUser = 0;
 	onMount(() => {
 		for (const key in templates) {
 			templates[key].values = [...new Set(templates[key].values)];
+			entryMetaCount += templates[key].values.length;
 		}
+		entryMetaCountUser += entrysUser.length;
+		entryMetaCount += entrys.length + entryMetaCountUser;
+
+		for (const item of entrys) {
+			entryCount += getDepthOfEntry(item.content);
+		}
+		for (const item of entrysUser) {
+			entryCountUser += getDepthOfEntry(item.content);
+		}
+		entryCount += entryCountUser;
+		console.log('entryMetaCount', entryMetaCount);
+		console.log('entryCount', entryCount);
 	});
+
+	const getDepthOfEntry = (entry) => {
+		let depth = 1;
+		entry.matchAll(templatesRegexp).forEach((match) => {
+			depth *= templates[match[1]].values.length;
+		});
+		// console.log(entry, depth)
+		return depth;
+	};
 	const exampleSentences = [
-		'吃着{{drink}}在{{brand}}店里玩{{game}}',
+		'吃着{{food}}在{{brand}}店里玩{{game}}',
 		'喝着{{drink}}在{{brand}}店里玩{{game}}',
-		'在{{wheretoeat}}和{{zodiac}}座的{{student}}学习{{programminglanguage}}',
-		'{{earlyorlate}}睡{{earlyorlate}}起',
+		'在{{wheretoeat}}和{{zodiac}}座的{{student}}一起学习{{programminglanguage}}',
+		'{{earlyorlate}}上吃{{food}}，{{earlyorlate}}上喝{{drink}}',
 		'不小心把{{drink}}洒在{{gameconsole}}上',
 		'穿着全套{{bodywear}}去{{brand}}喝{{coffee}}'
 	];
 	const exampleIdx = Math.floor(Math.random() * exampleSentences.length);
 	let sentence = exampleSentences[exampleIdx];
+	let sentenceDepth = 1;
 	let templateResult = '-';
 	let errTitle = '';
 	let errContent = '';
@@ -65,14 +94,14 @@
 			templateReplaced++;
 			return templates[name].values[Math.floor(Math.random() * templates[name].values.length)];
 		};
-		var re = new RegExp('{{(\\w+)}}', 'g');
-		templateResult = str.replaceAll(re, templateReplace);
+		templateResult = str.replaceAll(templatesRegexp, templateReplace);
 		if (templateReplaced == 0) {
 			showError('错误', '词条不含任何模板');
 		} else if (templateReplaced > 4) {
 			showError('错误', '词条使用了超过 4 个模板');
 		}
 		if (!error) {
+			sentenceDepth = getDepthOfEntry(str);
 			roller.start();
 		} else {
 			roller.stop();
@@ -85,7 +114,7 @@
 
 <div class="flex justify-center h-5/6">
 	<div class="grid content-center max-w-lg lg:max-w-3xl ml-4 mr-4 lg:m-0">
-		<div class="">
+		<div class="flex flex-col justify-center">
 			<div class="select-none text-3xl text-center font-bold">提名助手</div>
 			<div class="flex flex-row gap-2 mt-2 lg:pl-4 lg:pr-4">
 				<input
@@ -108,15 +137,20 @@
 					<p class="py-0">{errContent}</p>
 				</div>
 			{:else if templateResult.length > 0}
-				<div class="relative w-full min-h-fit mt-2">
-					<div class="relative select-none w-full text-lg text-center font-bold text-transparent">
+				<!-- <div class="text-center w-full min-h-fit mt-2">
+					<span class="mr-2">词条组合数</span><div class="badge badge-secondary">{sentenceDepth}</div>
+				</div> -->
+				<div class="relative w-full min-h-fit">
+					<div
+						class="relative select-none w-full text-lg text-center font-bold lg:pl-4 lg:pr-4 text-transparent"
+					>
 						{templateResult}
 					</div>
 					{#key templateResult}
 						<div
 							in:fade
 							out:fade
-							class="absolute top-0 w-full text-lg text-center font-bold text-primary"
+							class="absolute top-0 w-full text-lg text-center font-bold text-primary lg:pl-4 lg:pr-4"
 						>
 							{templateResult}
 						</div>
@@ -124,9 +158,29 @@
 				</div>
 			{/if}
 		</div>
-		<div class="divider mt-4 mb-4"></div>
-		<div class="">
-			<div class="select-none text-3xl text-center font-bold">模板列表</div>
+		<div class="flex flex-col justify-center text-center">
+			<div class="select-none text-3xl font-bold mt-4">词条统计</div>
+			<div class="stats stats-vertical lg:stats-horizontal">
+				<div class="stat">
+					<div class="stat-title">元词条数量</div>
+					<div class="stat-value">{entryMetaCount}</div>
+				</div>
+				<div class="stat">
+					<div class="stat-title">词条数量</div>
+					<div class="stat-value">{entryCount}</div>
+				</div>
+				<div class="stat">
+					<div class="stat-title">用户提名元词条数量</div>
+					<div class="stat-value">{entryMetaCountUser}</div>
+				</div>
+				<div class="stat">
+					<div class="stat-title">用户提名词条数量</div>
+					<div class="stat-value">{entryCountUser}</div>
+				</div>
+			</div>
+		</div>
+		<div class="mt-2">
+			<div class="select-none text-3xl text-center font-bold mt-4">模板列表</div>
 			<div class="flex flex-row justify-center flex-wrap gap-2 max-w-max mt-2">
 				{#each Object.entries(templates) as [name, content]}
 					<div
