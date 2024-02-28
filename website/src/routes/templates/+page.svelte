@@ -83,7 +83,7 @@
 <div class="flex justify-center h-5/6">
 	<div class="grid content-center max-w-lg lg:max-w-3xl ml-4 mr-4 lg:m-0">
 		<div class="">
-			<div class="select-none text-3xl text-center font-bold">模板测试</div>
+			<div class="select-none text-3xl text-center font-bold">提名助手</div>
 			<div class="flex flex-row gap-2 mt-2 lg:pl-4 lg:pr-4">
 				<input
 					bind:value={sentence}
