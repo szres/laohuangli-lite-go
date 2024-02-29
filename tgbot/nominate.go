@@ -44,14 +44,22 @@ func (n *nomination) refusedBy(user int64) int {
 	n.RefusedUsers = addUserToList(user, n.RefusedUsers)
 	return 1
 }
+
+const (
+	passMinUsers           = 5
+	passMinAgreeRatio      = 0.66
+	quickpassMinUsers      = 7
+	quickpassMinAgreeRatio = 0.75
+)
+
 func (n *nomination) isPassed() bool {
-	if len(n.ApprovedUsers) >= 5 && len(n.RefusedUsers) < len(n.ApprovedUsers)/2 {
+	if len(n.ApprovedUsers) >= passMinUsers && float64(len(n.ApprovedUsers))/float64(len(n.RefusedUsers)+len(n.ApprovedUsers)) > passMinAgreeRatio {
 		return true
 	}
 	return false
 }
 func (n *nomination) isQuickPassed() bool {
-	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= 7 && len(n.RefusedUsers) < len(n.ApprovedUsers)/3 {
+	if len(n.ApprovedUsers)+len(n.RefusedUsers) >= quickpassMinUsers && float64(len(n.ApprovedUsers))/float64(len(n.RefusedUsers)+len(n.ApprovedUsers)) > quickpassMinAgreeRatio {
 		return true
 	}
 	return false
@@ -249,12 +257,15 @@ func nominationValidCheck(content string, nominator string) (result int, respons
 	if len(similarNominations) > 0 {
 		resp := "提名词条与以下词条相似:\n"
 		for i, v := range similarNominations {
-			resp += strconv.Itoa(i+1) + ". 由 " + v.Nominator + " 提名的 \"" + v.Content + "\" - 相似度 " + strconv.FormatFloat(v.Similarity, 'f', 2, 64) + "\n"
+			resp += strconv.Itoa(i+1) + "\\. 由 `" + v.Nominator + "` 提名的 \"`" + v.Content + "`\" \\- 相似度 " + strconv.FormatFloat(v.Similarity*100, 'f', 0, 64) + "%\n"
 		}
 		resp += "请确认词条无重复后再发布投票。"
 		response = append(response, resp)
 	}
-	response = append(response, "提名词条 \""+content+"\" 投票已生成，发布投票后将进入投票阶段。\n获得不少于 5 个赞成票且赞成率超过 66% 的提名在24小时后可上线。\n获得不少于 10 个赞成票且赞成率超过 75% 的词条可立即上线。")
+	resp := "提名词条 \"`" + content + "`\" 投票已生成，发布投票后将进入投票阶段。\n"
+	resp += fmt.Sprintf("获得不少于 `%d` 个赞成票且赞成率超过 `%.0f%%` 的提名在24小时后可上线。\n", passMinUsers, passMinAgreeRatio*100)
+	resp += fmt.Sprintf("获得不少于 `%d` 个投票且赞成率超过 `%.0f%%` 的提名可立即上线。", quickpassMinUsers, quickpassMinAgreeRatio*100)
+	response = append(response, resp)
 	return
 }
 
