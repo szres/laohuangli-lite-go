@@ -29,7 +29,7 @@
 
 	const getDepthOfEntry = (entry) => {
 		let depth = 1;
-		entry.matchAll(templatesRegexp).forEach((match) => {
+		[...entry.matchAll(templatesRegexp)].forEach((match) => {
 			depth *= templates[match[1]].values.length;
 		});
 		// console.log(entry, depth)
