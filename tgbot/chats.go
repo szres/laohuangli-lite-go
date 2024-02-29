@@ -27,6 +27,26 @@ var adminCMD []string
 var userCMD []string
 var chatCMD []string
 
+func escapeChar(s string) (ret string) {
+	var list []string = []string{
+		`_`, `*`, `[`, `]`, `(`, `)`, `~`, "`", `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`, `\`,
+	}
+	for _, v := range list {
+		if strings.Contains(s, v) {
+			ret += v
+		}
+	}
+	return
+}
+func escape(s string) string {
+	var list []string = []string{
+		`_`, `*`, `[`, `]`, `(`, `)`, `~`, "`", `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`,
+	}
+	for _, v := range list {
+		s = strings.Replace(s, v, "\\"+v, -1)
+	}
+	return s
+}
 func chatLoad(id int64) privateChat {
 	var chat privateChat
 	chatx, _ := chats.Load(id)
@@ -162,7 +182,7 @@ func cmdInChatHandler(c tele.Context) error {
 	return nil
 }
 func msgInChatHandler(c tele.Context) error {
-	senderName := fullName(c.Sender())
+	senderName := escape(fullName(c.Sender()))
 	if _, ok := chats.Load(c.Chat().ID); !ok {
 		chats.Store(c.Chat().ID, privateChat{
 			State: IDLE,
@@ -183,9 +203,24 @@ func msgInChatHandler(c tele.Context) error {
 		if nominate[0] == '/' {
 			return c.Send("格式错误，请重新提名。")
 		}
+		escapeSequence := escapeChar(nominate)
+		if len(escapeSequence) > 0 {
+			resp := "提名词条中不可以含有以下字符：\n"
+			for i, v := range escapeSequence {
+				if i > 0 {
+					resp += "、"
+				}
+				resp += fmt.Sprintf("`\\%c`", v)
+			}
+			resp += "\n请修改后重新提名。"
+			return c.Send(resp, tele.ModeMarkdownV2)
+		}
 		success, reason := nominationValidCheck(nominate, senderName)
 		for _, v := range reason {
-			c.Send(v)
+			err := c.Send(v, tele.ModeMarkdownV2)
+			if err != nil {
+				fmt.Println(err, v)
+			}
 		}
 		chat.State = IDLE
 		if success == -1 {
@@ -209,6 +244,7 @@ func msgInChatHandler(c tele.Context) error {
 			msg, err := b.Send(c.Chat(), newNomination.buildVotingText(), mk, tele.ModeMarkdownV2)
 			if err != nil {
 				fmt.Println(err)
+				b.Send(c.Chat(), err.Error())
 			} else {
 				newNomination.UUID = uuid.NewV4().String()
 				newNomination.ID = msg.ID
