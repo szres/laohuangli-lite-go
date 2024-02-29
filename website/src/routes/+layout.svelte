@@ -9,7 +9,7 @@
 		</div>
 		<div class="flex-none">
 			<ul class="menu menu-horizontal px-1">
-				<li><a href="/templates">模板词条</a></li>
+				<li><a href="/templates">提名助手</a></li>
 			</ul>
 			<label class="flex cursor-pointer gap-2">
 				<svg
