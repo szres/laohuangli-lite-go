@@ -47,6 +47,7 @@
 	let sentence = exampleSentences[exampleIdx];
 	let sentenceDepth = 1;
 	let templateResult = '-';
+	let templateSlice = [];
 	let errTitle = '';
 	let errContent = '';
 	let error = false;
@@ -92,9 +93,21 @@
 				return '{{' + name + '}}';
 			}
 			templateReplaced++;
-			return templates[name].values[Math.floor(Math.random() * templates[name].values.length)];
+			return (
+				'[' +
+				templates[name].values[Math.floor(Math.random() * templates[name].values.length)] +
+				']'
+			);
 		};
+		templateSlice = [];
 		templateResult = str.replaceAll(templatesRegexp, templateReplace);
+		[...templateResult.matchAll(/\[?([^\[\]]+)\]?/g)].forEach((match) => {
+			// console.log(match)
+			templateSlice.push({
+				isTemplate: match[1].length !== match[0].length ? true : false,
+				content: match[1]
+			});
+		});
 		if (templateReplaced == 0) {
 			showError('错误', '词条不含任何模板');
 		} else if (templateReplaced > 4) {
@@ -141,18 +154,36 @@
 					<span class="mr-2">词条组合数</span><div class="badge badge-secondary">{sentenceDepth}</div>
 				</div> -->
 				<div class="relative w-full min-h-fit">
-					<div
-						class="relative select-none w-full text-lg text-center font-bold lg:pl-4 lg:pr-4 text-transparent"
-					>
-						{templateResult}
+					<div class="relative w-full select-none text-transparent flex flex-row justify-center">
+						{#each templateSlice as t}
+							{#if t.isTemplate}
+								<div class="text-lg text-center font-bold pl-1 pr-1">
+									{t.content}
+								</div>
+							{:else}
+								<div class="text-sm text-center self-center">
+									{t.content}
+								</div>
+							{/if}
+						{/each}
 					</div>
-					{#key templateResult}
+					{#key templateSlice}
 						<div
-							in:fade
-							out:fade
-							class="absolute top-0 w-full text-lg text-center font-bold text-primary lg:pl-4 lg:pr-4"
+							in:fade={{ delay: 300 }}
+							out:fade={{ duration: 500 }}
+							class="absolute w-full top-0 flex flex-row justify-center"
 						>
-							{templateResult}
+							{#each templateSlice as t}
+								{#if t.isTemplate}
+									<div class="text-lg text-center font-bold text-primary pl-1 pr-1">
+										{t.content}
+									</div>
+								{:else}
+									<div class="text-sm text-center self-center">
+										{t.content}
+									</div>
+								{/if}
+							{/each}
 						</div>
 					{/key}
 				</div>
