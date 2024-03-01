@@ -193,22 +193,30 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 		case 0:
 			pp = 4
 			np = 2
-			head = "作为首位窥视者洞察到了清晰的命运，今日：\n"
+			head = "作为今日第一位祈求命运之人，洞察到了清晰的命运，今日：\n"
 		case 1:
 			pp = 3
 			np = 1
-			head = "窥视的命运已开始模糊，今日：\n"
+			head = "为今日第二位老黄历用户，祈求的命运已开始模糊，今日：\n"
 		case 2:
 			pp = 1
 			np = 1
-			head = "从完全模糊的命运中洞察到了一丝线索，今日：\n"
+			head = "作为今日第三位老黄历主顾，只能从完全模糊的命运中洞察到一丝线索，今日：\n"
 		case 12:
 			pp = 2
 			np = 6
-			head = "作为第十三位窥视者，命运的天平将为他倾斜，今日：\n"
+			head = "作为第十三位祈求命运之人，命运的天平将为他倾斜，今日：\n"
 		default:
 			pp = 1
 			np = 1
+			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+				pp += 1
+			}
+			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+				np += 1
+			}
 			head = "今日：\n"
 		}
 		strSlice := make([]string, 0)
@@ -229,6 +237,7 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 			body += str
 		}
 		body += "。"
+		// TODO: 重新实现
 		if strutil.Similarity(strSlice[0], strSlice[1], gStrCompareAlgo) > 0.95 {
 			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(25600)))
 			if randInt.Cmp(big.NewInt(12800)) >= 0 {
@@ -283,8 +292,10 @@ func (tr todayResults) String() (output string) {
 	sh := []string{
 		"未分配内存中的随机比特揭示了今日的运程",
 		"磁盘坏道中的损坏数据揭示了今日的运势",
-		"昨天的群聊内容预示了今天的命运走向",
-		"手机麦克风收集到的录音数据预测了今天的最佳策略",
+		"泄漏的群聊内容预示了今天的命运走向",
+		"麦克风收集到的隐私录音预测了今天的最佳策略",
+		"网络延迟的随机波动预示着命运的流转",
+		"摄像头的噪点似乎诉说着今日的命运",
 	}
 	randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(sh))))
 	output = sh[randInt.Int64()] + "：\n\n"
