@@ -292,8 +292,10 @@ func (tr todayResults) String() (output string) {
 	sh := []string{
 		"未分配内存中的随机比特揭示了今日的运程",
 		"磁盘坏道中的损坏数据揭示了今日的运势",
-		"昨天的群聊内容预示了今天的命运走向",
-		"手机麦克风收集到的录音数据预测了今天的最佳策略",
+		"泄漏的群聊内容预示了今天的命运走向",
+		"麦克风收集到的隐私录音预测了今天的最佳策略",
+		"网络延迟的随机波动预示着命运的流转",
+		"摄像头的噪点似乎诉说着今日的命运",
 	}
 	randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(sh))))
 	output = sh[randInt.Int64()] + "：\n\n"
