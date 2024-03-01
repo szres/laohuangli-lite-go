@@ -209,6 +209,14 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 		default:
 			pp = 1
 			np = 1
+			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+				pp += 1
+			}
+			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+				np += 1
+			}
 			head = "今日：\n"
 		}
 		strSlice := make([]string, 0)
@@ -229,6 +237,7 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 			body += str
 		}
 		body += "。"
+		// TODO: 重新实现
 		if strutil.Similarity(strSlice[0], strSlice[1], gStrCompareAlgo) > 0.95 {
 			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(25600)))
 			if randInt.Cmp(big.NewInt(12800)) >= 0 {
