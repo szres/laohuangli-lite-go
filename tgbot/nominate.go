@@ -168,7 +168,7 @@ func (ns *nominationSlice) update() {
 			}
 		}
 		if laohuangliUpdated {
-			laoHL.save()
+			laoHL.saveUser()
 		}
 		*ns = newNominations
 		ns.saveRoutine()

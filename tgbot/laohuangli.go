@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"math/big"
@@ -16,6 +17,8 @@ import (
 )
 
 type laohuangli struct {
+	// 数据库
+	db *scribble.Driver
 	// 本地词条
 	entries []entry
 	// 用户提名词条
@@ -28,15 +31,53 @@ type laohuangli struct {
 
 var laoHL laohuangli
 
+type banlancedEntriesSave struct {
+	Date    string  `json:"date"`
+	Entries []entry `json:"entries"`
+}
+
 func (lhl *laohuangli) init(db *scribble.Driver) {
 	*lhl = laohuangli{
-		entries: make([]entry, 0),
+		db: db,
 	}
-	db.Read("datas", "laohuangli", &lhl.entries)
-	db.Read("datas", "templates", &lhl.templates)
-	db.Read("datas", "laohuangli-user", &lhl.entriesUser)
+	lhl.db.Read("datas", "laohuangli", &lhl.entries)
+	lhl.db.Read("datas", "templates", &lhl.templates)
+	lhl.db.Read("datas", "laohuangli-user", &lhl.entriesUser)
 	lhl.cache.Init()
-	lhl.createBanlancedEntries()
+
+	var lhlBanlancedEntries banlancedEntriesSave
+	lhl.db.Read("datas", "laohuangliBanlancedEntries", &lhlBanlancedEntries)
+	if lhlBanlancedEntries.Date == time.Now().In(gTimezone).Format("2006-01-02") {
+		fmt.Println("加权词条库缓存有效")
+		lhl.entriesBanlanced = lhlBanlancedEntries.Entries
+	} else {
+		fmt.Println("加权词条库缓存失效，生成加权词条库")
+		lhl.createBanlancedEntries()
+	}
+}
+
+func (lhl *laohuangli) save() {
+	err := lhl.db.Write("datas", "templates", lhl.templates)
+	if err == nil {
+		fmt.Println("保存模板成功")
+	} else {
+		fmt.Println("保存模板失败:" + err.Error())
+	}
+	err = lhl.db.Write("datas", "laohuangli-user", lhl.entriesUser)
+	if err == nil {
+		fmt.Println("保存用户词条成功")
+	} else {
+		fmt.Println("保存用户词条失败:" + err.Error())
+	}
+	var lhlBanlancedEntries banlancedEntriesSave
+	lhlBanlancedEntries.Date = time.Now().In(gTimezone).Format("2006-01-02")
+	lhlBanlancedEntries.Entries = lhl.entriesBanlanced
+	err = lhl.db.Write("datas", "laohuangliBanlancedEntries", lhlBanlancedEntries)
+	if err == nil {
+		fmt.Println("加权词条保存成功")
+	} else {
+		fmt.Println("加权词条保存失败:" + err.Error())
+	}
 }
 
 // 计算字符串的模板实例深度之和
@@ -111,8 +152,9 @@ func (lhl *laohuangli) deleteBanlancedEntries(s []int64) {
 func (lhl *laohuangli) add(l entry) {
 	lhl.entriesUser = append(lhl.entriesUser, l)
 }
-func (lhl *laohuangli) save() {
-	db.Write("datas", "laohuangli-user", lhl.entriesUser)
+func (lhl *laohuangli) saveUser() {
+	lhl.db.Write("datas", "laohuangli-user", lhl.entriesUser)
+	lhl.db.Write("datas", "templates", lhl.templates)
 }
 func (lhl *laohuangli) remove(c string) bool {
 	// TODO:
