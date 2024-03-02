@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	kuma "github.com/Nigh/kuma-push"
@@ -143,5 +145,14 @@ func main() {
 	})
 
 	fmt.Println("上线！")
-	b.Start()
+	go b.Start()
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt, syscall.SIGTERM)
+	<-sc
+	b.Stop()
+	fmt.Println("由于即将关闭，进行数据备份")
+	laoHL.save()
+	<-time.After(time.Second * 1)
+	fmt.Println("下线！")
 }
