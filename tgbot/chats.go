@@ -215,7 +215,7 @@ func msgInChatHandler(c tele.Context) error {
 			resp += "\n请修改后重新提名。"
 			return c.Send(resp, tele.ModeMarkdownV2)
 		}
-		success, reason := nominationValidCheck(nominate, senderName)
+		success, reason := nominationValidCheck(nominate)
 		for _, v := range reason {
 			err := c.Send(v, tele.ModeMarkdownV2)
 			if err != nil {
