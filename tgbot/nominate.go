@@ -186,7 +186,7 @@ type similarContent struct {
 	Nominator  string
 }
 
-func nominationValidCheck(content string, nominator string) (result int, response []string) {
+func nominationValidCheck(content string) (result int, response []string) {
 	response = make([]string, 0)
 	if len([]rune(content)) > 64 {
 		result = -1

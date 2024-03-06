@@ -27,9 +27,9 @@ var adminCMD []string
 var userCMD []string
 var chatCMD []string
 
-func escapeChar(s string) (ret string) {
+func escapeNominate(s string) (ret string) {
 	var list []string = []string{
-		`_`, `*`, `[`, `]`, `(`, `)`, `~`, "`", `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`, `\`,
+		`_`, `*`, `[`, `]`, `(`, `)`, `~`, "`", `>`, `#`, `+`, `-`, `=`, `|`, `.`, `!`, `\`,
 	}
 	for _, v := range list {
 		if strings.Contains(s, v) {
@@ -39,11 +39,16 @@ func escapeChar(s string) (ret string) {
 	return
 }
 func escape(s string) string {
-	var list []string = []string{
-		`_`, `*`, `[`, `]`, `(`, `)`, `~`, "`", `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`,
-	}
-	for _, v := range list {
-		s = strings.Replace(s, v, "\\"+v, -1)
+	var escapeList string = `_*[]()~` + "`" + `>#+-=|{}.!`
+	prefix := ""
+	result := ""
+	for _, c := range s {
+		if strings.ContainsRune(escapeList, rune(c)) && prefix != `\` {
+			result += `\` + string(c)
+		} else {
+			result += string(c)
+		}
+		prefix = string(c)
 	}
 	return s
 }
@@ -203,19 +208,19 @@ func msgInChatHandler(c tele.Context) error {
 		if nominate[0] == '/' {
 			return c.Send("格式错误，请重新提名。")
 		}
-		escapeSequence := escapeChar(nominate)
+		escapeSequence := escapeNominate(nominate)
 		if len(escapeSequence) > 0 {
 			resp := "提名词条中不可以含有以下字符：\n"
 			for i, v := range escapeSequence {
 				if i > 0 {
 					resp += "、"
 				}
-				resp += fmt.Sprintf("`\\%c`", v)
+				resp += fmt.Sprintf("'\\%c'", v)
 			}
 			resp += "\n请修改后重新提名。"
 			return c.Send(resp, tele.ModeMarkdownV2)
 		}
-		success, reason := nominationValidCheck(nominate, senderName)
+		success, reason := nominationValidCheck(nominate)
 		for _, v := range reason {
 			err := c.Send(v, tele.ModeMarkdownV2)
 			if err != nil {
