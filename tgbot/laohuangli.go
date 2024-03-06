@@ -423,8 +423,14 @@ func (tr *todayResults) NewRand() {
 		return slice[randInt.Int64()]
 	}
 	getRandomNFromSlice := func(slice []string) (ret []string) {
-		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
-		list := combin.Combinations(len(slice), int(randInt.Int64())+1)
+		// [0, len(slice)^2)
+		randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(len(slice)*len(slice))))
+		// (-len(slice), 0]
+		randInt.Sqrt(randInt).Neg(randInt)
+		// (0, len(slice)]
+		randInt.Add(randInt, big.NewInt(int64(len(slice))))
+		// pick (0, len(slice)] elements from slice
+		list := combin.Combinations(len(slice), int(randInt.Int64()))
 		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(len(list))))
 		listPick := list[randInt.Int64()]
 		for _, k := range listPick {
