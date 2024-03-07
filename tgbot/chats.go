@@ -43,14 +43,15 @@ func escape(s string) string {
 	prefix := ""
 	result := ""
 	for _, c := range s {
+		char := string(c)
 		if strings.ContainsRune(escapeList, rune(c)) && prefix != `\` {
-			result += `\` + string(c)
+			result += `\` + char
 		} else {
-			result += string(c)
+			result += char
 		}
-		prefix = string(c)
+		prefix = char
 	}
-	return s
+	return result
 }
 func chatLoad(id int64) privateChat {
 	var chat privateChat
