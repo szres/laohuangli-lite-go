@@ -9,7 +9,6 @@ html {
 	display: none;
 }
 
-
 .tooltip {
 	@apply invisible absolute;
 }

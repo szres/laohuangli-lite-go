@@ -8,6 +8,11 @@
 	let entryMetaCount = 0;
 	let entryCountUser = 0;
 	let entryMetaCountUser = 0;
+	let templateView = {
+		name: '',
+		desc: '',
+		values: []
+	};
 	onMount(() => {
 		for (const key in templates) {
 			templates[key].values = [...new Set(templates[key].values)];
@@ -214,26 +219,43 @@
 			<div class="select-none text-3xl text-center font-bold mt-4">模板列表</div>
 			<div class="flex flex-row justify-center flex-wrap gap-2 max-w-max mt-2">
 				{#each Object.entries(templates) as [name, content]}
-					<div
-						class="flex-none has-tooltip min-w-min border rounded-full border-primary overflow-hidden"
+					<button
+						class="flex-none min-w-min border rounded-full border-primary overflow-hidden"
+						on:click={() => {
+							templateView.name = name;
+							templateView.desc = content.desc;
+							templateView.values = content.values;
+						}}
+						onclick="template_content.showModal()"
 					>
-						<div
-							class="mt-12 tooltip min-w-min max-w-lg rounded-xl p-1 bg-primary flex flex-row justify-center flex-wrap gap-1"
-						>
-							{#each content.values as v}
-								<div class="border border-neutral rounded-md text-neutral text-sm pl-1 pr-1">
-									{v}
-								</div>
-							{/each}
-						</div>
 						<div class="bg-primary text-neutral w-full text-md font-bold pl-2 pr-2">
 							{'{{'}{name}{'}}'}
 						</div>
 						<div class="text-sm text-center pl-2 pr-2">{content.desc}</div>
-					</div>
+					</button>
 				{/each}
 			</div>
 		</div>
 		<div class="mt-20"></div>
 	</div>
 </div>
+
+<dialog id="template_content" class="modal">
+	<div class="modal-box max-h-[66%]">
+		<div class="flex border-b-2 border-primary pl-2 pr-2">
+			<span class="font-bold text-lg text-primary">{'{{'}{templateView.name}{'}}'}</span>
+			<span class="select-none text-xs text-neutral-500">x{templateView.values.length}</span>
+		</div>
+		<p class="text-xs text-neutral-500 pl-2">{templateView.desc}</p>
+		<div class="flex flex-row justify-center flex-wrap gap-2 max-w-max mt-2">
+			{#each templateView.values as v}
+				<div class="border border-primary bg-primary rounded-md text-neutral text-sm pl-1 pr-1">
+					{v}
+				</div>
+			{/each}
+		</div>
+	</div>
+	<form method="dialog" class="modal-backdrop">
+		<button>close</button>
+	</form>
+</dialog>
