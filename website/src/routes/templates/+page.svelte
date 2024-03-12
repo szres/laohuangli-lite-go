@@ -241,12 +241,14 @@
 </div>
 
 <dialog id="template_content" class="modal">
-	<div class="modal-box max-h-[66%]">
-		<div class="flex border-b-2 border-primary pl-2 pr-2">
-			<span class="font-bold text-lg text-primary">{'{{'}{templateView.name}{'}}'}</span>
-			<span class="select-none text-xs text-neutral-500">x{templateView.values.length}</span>
+	<div class="modal-box pt-0 max-h-[66%]">
+		<div class="sticky top-0 pt-4 pb-2 bg-inherit">
+			<div class="flex border-b-2 border-primary pl-2 pr-2">
+				<span class="font-bold text-xl text-primary">{'{{'}{templateView.name}{'}}'}</span>
+				<span class="select-none text-xs text-neutral-500">x{templateView.values.length}</span>
+			</div>
+			<p class="text-xs text-neutral-500 pl-2">{templateView.desc}</p>
 		</div>
-		<p class="text-xs text-neutral-500 pl-2">{templateView.desc}</p>
 		<div class="flex flex-row justify-center flex-wrap gap-2 max-w-max mt-2">
 			{#each templateView.values as v}
 				<div class="border border-primary bg-primary rounded-md text-neutral text-sm pl-1 pr-1">
