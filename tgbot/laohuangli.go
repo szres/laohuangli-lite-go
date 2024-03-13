@@ -189,6 +189,15 @@ func (lhl *laohuangli) randomEntryIndex() (idx int64, err error) {
 	return
 }
 
+func buildStrFromTmplWithInlineTmpl(t *fasttemplate.Template, tmpl map[string]laohuangliTemplate) string {
+	return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
+		if _, ok := tmpl[tag]; ok {
+			p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(tmpl[tag].Values))))
+			return w.Write([]byte("`" + tmpl[tag].Values[p.Int64()] + "`"))
+		}
+		return w.Write([]byte("`错误模板`"))
+	})
+}
 func buildStrFromTmpl(t *fasttemplate.Template, tmpl map[string]laohuangliTemplate) string {
 	return t.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
 		if _, ok := tmpl[tag]; ok {

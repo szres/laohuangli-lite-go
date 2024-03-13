@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/adrg/strutil"
+	"github.com/valyala/fasttemplate"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -240,14 +241,14 @@ func nominationValidCheck(content string) (result int, response []string) {
 		})
 	}
 	if !hasTemplate {
-	for _, t := range laoHL.templates {
-		for _, v := range t.Values {
+		for _, t := range laoHL.templates {
+			for _, v := range t.Values {
 				similarity := strutil.Similarity(cmpContent, v, gStrCompareAlgo)
-			similarPush(similarContent{
-				Similarity: similarity,
-				Content:    v,
-				Nominator:  "{{" + t.Desc + "}}模板",
-			})
+				similarPush(similarContent{
+					Similarity: similarity,
+					Content:    v,
+					Nominator:  "{{" + t.Desc + "}}模板",
+				})
 			}
 		}
 	}
@@ -284,7 +285,16 @@ func (n nomination) buildVoteMarkup() *tele.ReplyMarkup {
 }
 
 func (n nomination) buildVotingText() string {
-	return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), n.voteEndTimeString())
+	ret := fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已开始投票。\n", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content)
+	templateDepth := laoHL.getTemplateDepth(n.Content)
+	if templateDepth > 1 {
+		ret += "本词条含有模板，其可能出现的结果有:\n"
+		for i := 1; i <= 3 && i <= templateDepth; i++ {
+			ret += fmt.Sprintf("%d\\. %s \n", i, buildStrFromTmplWithInlineTmpl(fasttemplate.New(n.Content, "{{", "}}"), laoHL.templates))
+		}
+	}
+	ret += fmt.Sprintf("请为此词条是否可以加入老黄历每日算命结果投出神圣的一票吧！\n\n赞成：`%d` 票\n反对：`%d` 票\n\n投票将于 `%s` 结束", len(n.ApprovedUsers), len(n.RefusedUsers), n.voteEndTimeString())
+	return ret
 }
 
 func (n nomination) buildVoteResultText() string {
