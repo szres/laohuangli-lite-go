@@ -249,7 +249,7 @@ func nominationValidCheck(content string) (result int, response []string) {
 	}
 	if len(similarNominations) > 0 && similarNominations[0].Similarity > 0.9 {
 		result = -1
-		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \""+similarNominations[0].Content+"\" 相似度过高，请更换提名的词条")
+		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \"`"+similarNominations[0].Content+"`\" 相似度过高，请更换提名的词条")
 		return
 	}
 
