@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"slices"
 	"sort"
 	"time"
 
@@ -116,7 +117,7 @@ func (lhl *laohuangli) createBanlancedEntries() {
 
 	// 用户提名词条2倍权重
 	for i := 0; i < 2; i++ {
-		lhl.entriesBanlanced = append(lhl.entriesBanlanced, lhl.entriesUser...)
+		lhl.entriesBanlanced = slices.Concat(lhl.entriesBanlanced, lhl.entriesUser)
 	}
 
 	for _, v := range lhl.entries {
@@ -160,7 +161,7 @@ func (lhl *laohuangli) deleteBanlancedEntries(s []int64) {
 		if v >= int64(len(lhl.entriesBanlanced)) {
 			continue
 		}
-		lhl.entriesBanlanced = append(lhl.entriesBanlanced[:v], lhl.entriesBanlanced[v+1:]...)
+		lhl.entriesBanlanced = slices.Concat(lhl.entriesBanlanced[:v], lhl.entriesBanlanced[v+1:])
 	}
 }
 

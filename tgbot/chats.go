@@ -67,7 +67,7 @@ func init() {
 	userCMD = []string{
 		"/help", "/start", "/nominate", "/list",
 	}
-	chatCMD = append(adminCMD, userCMD...)
+	chatCMD = slices.Concat(adminCMD, userCMD)
 	chats = syncmap.Map{}
 	go updateChats()
 }
