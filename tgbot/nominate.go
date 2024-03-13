@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -81,7 +82,7 @@ func (n nomination) MessageSig() (messageID string, chatID int64) {
 func removeUserFromList(user int64, list []int64) []int64 {
 	for i, v := range list {
 		if v == user {
-			return append(list[:i], list[i+1:]...)
+			return slices.Concat(list[:i], list[i+1:])
 		}
 	}
 	return list
@@ -224,7 +225,7 @@ func nominationValidCheck(content string) (result int, response []string) {
 	} else {
 		cmpContent = content
 	}
-	for _, v := range append(laoHL.entries, laoHL.entriesUser...) {
+	for _, v := range slices.Concat(laoHL.entries, laoHL.entriesUser) {
 		similarity := strutil.Similarity(cmpContent, laoHL.getTemplateExample(v.Content), gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
