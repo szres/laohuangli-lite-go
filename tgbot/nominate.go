@@ -193,7 +193,9 @@ func nominationValidCheck(content string) (result int, response []string) {
 		response = append(response, "提名内容过长，请控制在 64 个字以内")
 		return
 	}
-	if laoHL.getTemplateDepth(content) <= 0 {
+	templateDepth := laoHL.getTemplateDepth(content)
+	hasTemplate := templateDepth > 1
+	if templateDepth <= 0 {
 		result = -1
 		response = append(response, "错误的模板格式或者不存在的模板变量，请检查更正后重新提交。")
 		return
@@ -213,16 +215,16 @@ func nominationValidCheck(content string) (result int, response []string) {
 			}
 		}
 	}
-	for _, v := range laoHL.entries {
-		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
-		similarPush(similarContent{
-			Similarity: similarity,
-			Content:    v.Content,
-			Nominator:  v.Nominator,
-		})
+
+	var cmpContent string
+	// 含有模板的字符串使用其最简实例运行查重
+	if hasTemplate {
+		cmpContent = laoHL.getTemplateExample(content)
+	} else {
+		cmpContent = content
 	}
-	for _, v := range laoHL.entriesUser {
-		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
+	for _, v := range append(laoHL.entries, laoHL.entriesUser...) {
+		similarity := strutil.Similarity(cmpContent, laoHL.getTemplateExample(v.Content), gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
 			Content:    v.Content,
@@ -230,26 +232,28 @@ func nominationValidCheck(content string) (result int, response []string) {
 		})
 	}
 	for _, v := range nominations {
-		similarity := strutil.Similarity(content, v.Content, gStrCompareAlgo)
+		similarity := strutil.Similarity(cmpContent, laoHL.getTemplateExample(v.Content), gStrCompareAlgo)
 		similarPush(similarContent{
 			Similarity: similarity,
 			Content:    v.Content,
 			Nominator:  v.NominatorName,
 		})
 	}
+	if !hasTemplate {
 	for _, t := range laoHL.templates {
 		for _, v := range t.Values {
-			similarity := strutil.Similarity(content, v, gStrCompareAlgo)
+				similarity := strutil.Similarity(cmpContent, v, gStrCompareAlgo)
 			similarPush(similarContent{
 				Similarity: similarity,
 				Content:    v,
 				Nominator:  "{{" + t.Desc + "}}模板",
 			})
+			}
 		}
 	}
 	if len(similarNominations) > 0 && similarNominations[0].Similarity > 0.9 {
 		result = -1
-		response = append(response, "提名内容与 "+similarNominations[0].Nominator+" 提名的 \"`"+similarNominations[0].Content+"`\" 相似度过高，请更换提名的词条")
+		response = append(response, "提名内容与 `"+similarNominations[0].Nominator+"` 提名的 \"`"+similarNominations[0].Content+"`\" 相似度过高，请更换提名的词条")
 		return
 	}
 
