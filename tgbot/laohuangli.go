@@ -95,6 +95,21 @@ func (lhl *laohuangli) getTemplateDepth(s string) int {
 	return depth
 }
 
+// 返回模板字符串的最简实例（以模板首个元素填充）
+func (lhl *laohuangli) getTemplateExample(s string) string {
+	sTmpl := fasttemplate.New(s, "{{", "}}")
+	result, err := sTmpl.ExecuteFuncStringWithErr(func(w io.Writer, tag string) (int, error) {
+		if _, ok := lhl.templates[tag]; ok {
+			return w.Write([]byte(lhl.templates[tag].Values[0]))
+		}
+		return 0, errors.New("invalid template")
+	})
+	if err != nil {
+		return s
+	}
+	return result
+}
+
 // 由原始词条库生成均衡词条库
 func (lhl *laohuangli) createBanlancedEntries() {
 	lhl.entriesBanlanced = make([]entry, 0)
