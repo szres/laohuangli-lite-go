@@ -1151,7 +1151,7 @@
 	},
 	{
 		"uuid": "",
-		"content": "染成{{color1c}}毛",
+		"content": "染成{{haircolor}}毛",
 		"nominator": "Χianii"
 	},
 	{
@@ -1166,7 +1166,12 @@
 	},
 	{
 		"uuid": "",
-		"content": "{{food}}",
+		"content": "吃{{food}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "喝{{drink}}",
 		"nominator": "Χianii"
 	},
 	{
@@ -1226,12 +1231,107 @@
 	},
 	{
 		"uuid": "",
-		"content": "{{wheretoeat}}",
+		"content": "{{game}}",
 		"nominator": "Χianii"
 	},
 	{
 		"uuid": "",
-		"content": "{{game}}",
+		"content": "{{drink}}与{{drink}}同饮",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{food}}与{{food}}同食",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "就着{{drink}}吃{{food}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "吃{{food}}喝{{drink}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "去{{wheretoeat}}喝{{drink}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "去{{wheretoeat}}吃{{food}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{haircolor}}色{{hairstyle}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{hairstyle}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{hat}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{hat}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{topwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{topwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{bottomwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{bottomwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{underwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{underwear}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{socks}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{socks}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{color1c}}色{{shoe}}",
+		"nominator": "Χianii"
+	},
+	{
+		"uuid": "",
+		"content": "{{shoe}}",
 		"nominator": "Χianii"
 	}
 ]
