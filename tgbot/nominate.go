@@ -340,15 +340,12 @@ func buildVotes(n nomination) (result *tele.ArticleResult) {
 }
 
 func buildVoteResultSimple(uuid string) string {
-	if uuid == "" {
-		return "投票已结束"
-	}
-	for _, v := range laoHL.entries {
+	for _, v := range laoHL.entriesUser {
 		if v.UUID == uuid {
 			return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已经通过投票正式上线。", v.Nominator, v.Content)
 		}
 	}
-	return "投票已结束"
+	return "投票已结束，词条未通过。"
 }
 
 func voteApprove() func(c tele.Context) error {
@@ -371,7 +368,6 @@ func voteApprove() func(c tele.Context) error {
 				}
 			}
 		}
-		// TODO: show vote result better
 		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
 			Text: "投票已结束",
@@ -398,7 +394,6 @@ func voteRefuse() func(c tele.Context) error {
 				}
 			}
 		}
-		// TODO: show vote result better
 		c.Edit(buildVoteResultSimple(c.Data()), tele.ModeMarkdownV2)
 		return c.Respond(&tele.CallbackResponse{
 			Text: "投票已结束",
