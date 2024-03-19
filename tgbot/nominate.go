@@ -117,7 +117,7 @@ func (ns *nominationSlice) add(n nomination) {
 func (ns *nominationSlice) remove(id int) {
 	for i, n := range *ns {
 		if n.ID == id {
-			*ns = append((*ns)[:i], (*ns)[i+1:]...)
+			*ns = slices.Delete(*ns, i, i+1)
 			break
 		}
 	}

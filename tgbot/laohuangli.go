@@ -215,7 +215,8 @@ func buildStrFromTmplWoDup(t *fasttemplate.Template, tmpl map[string]laohuangliT
 			p, _ := rand.Int(rand.Reader, big.NewInt(int64(len(tmpl[tag].Values))))
 			ret := tmpl[tag].Values[p.Int64()]
 			temp := tmpl[tag]
-			temp.Values = append(tmpl[tag].Values[:p.Int64()], tmpl[tag].Values[p.Int64()+1:]...)
+
+			temp.Values = slices.Delete(temp.Values, int(p.Int64()), int(p.Int64())+1)
 			tmpl[tag] = temp
 			return w.Write([]byte(ret))
 		}
@@ -487,30 +488,23 @@ func (tr *todayResults) NewRand() {
 	travelStr := []string{}
 	for i := 0; i < 2; i++ {
 		wearList := make([]string, 0)
-		wearList = append(wearList, getRandomFromSliceSlice(headWear)...)
+		wearList = slices.Concat(wearList, getRandomFromSliceSlice(headWear))
 		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(25600)))
 		if randInt.Cmp(big.NewInt(19200)) >= 0 {
-			wearList = append(wearList, getRandomFromSliceSlice(bodyWear)...)
+			wearList = slices.Concat(wearList, getRandomFromSliceSlice(bodyWear))
 		} else {
 			wearList = append(wearList, getRandomOneFromSlice(fullbodyWear))
 		}
-		wearList = append(wearList, getRandomOneFromSlice(underWear))
-		wearList = append(wearList, getRandomOneFromSlice(legWear))
-		wearList = append(wearList, getRandomOneFromSlice(footWear))
+		wearList = slices.Concat(wearList, []string{getRandomOneFromSlice(underWear), getRandomOneFromSlice(legWear), getRandomOneFromSlice(footWear)})
 		wearList = getRandomNFromSlice(wearList)
 
 		wearStr = append(wearStr, "")
 		for k, v := range wearList {
 			conc := ""
-			if k == 1 {
-				conc = "配"
-			}
-			if k > 1 {
-				if k == len(wearList)-1 {
-					conc = "和"
-				} else {
-					conc = "、"
-				}
+			if k == len(wearList)-1 {
+				conc = "和"
+			} else {
+				conc = "、"
 			}
 			wearStr[i] += conc + v
 		}
@@ -524,9 +518,7 @@ func (tr *todayResults) NewRand() {
 		}
 	}
 	tmpl := make(map[string]laohuangliTemplate)
-	for k, v := range laoHL.templates {
-		tmpl[k] = v
-	}
+	laoHL.db.Read("datas", "templates", &tmpl)
 	wearStrPos := buildStrFromTmplWoDup(fasttemplate.New(wearStr[0], "{{", "}}"), tmpl)
 	foodStrPos := buildStrFromTmplWoDup(fasttemplate.New(foodStr[0], "{{", "}}"), tmpl)
 	travelStrPos := buildStrFromTmplWoDup(fasttemplate.New(travelStr[0], "{{", "}}"), tmpl)
