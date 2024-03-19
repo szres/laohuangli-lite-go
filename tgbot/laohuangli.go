@@ -524,9 +524,7 @@ func (tr *todayResults) NewRand() {
 		}
 	}
 	tmpl := make(map[string]laohuangliTemplate)
-	for k, v := range laoHL.templates {
-		tmpl[k] = v
-	}
+	laoHL.db.Read("datas", "templates", &tmpl)
 	wearStrPos := buildStrFromTmplWoDup(fasttemplate.New(wearStr[0], "{{", "}}"), tmpl)
 	foodStrPos := buildStrFromTmplWoDup(fasttemplate.New(foodStr[0], "{{", "}}"), tmpl)
 	travelStrPos := buildStrFromTmplWoDup(fasttemplate.New(travelStr[0], "{{", "}}"), tmpl)
