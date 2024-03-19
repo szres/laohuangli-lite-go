@@ -17,9 +17,10 @@ import (
 )
 
 type testenv struct {
-	Token   string `json:"token"`
-	AdminID string `json:"adminid"`
-	KumaURL string `json:"kumaurl"`
+	Token     string `json:"token"`
+	AdminID   string `json:"adminid"`
+	KumaURL   string `json:"kumaurl"`
+	WebDomain string `json:"webdomain"`
 }
 
 var testEnv testenv
@@ -39,12 +40,12 @@ type laohuangliResult struct {
 }
 
 var (
-	gTimezone    *time.Location = time.FixedZone("CST", 8*60*60)
-	gTimeFormat  string         = "2006-01-02 15:04"
-	gAdminID     int64
-	gKumaPushURL string
-	gToken       string
-
+	gTimezone       *time.Location = time.FixedZone("CST", 8*60*60)
+	gTimeFormat     string         = "2006-01-02 15:04"
+	gAdminID        int64
+	gKumaPushURL    string
+	gToken          string
+	gWebDomain      string
 	gStrCompareAlgo *metrics.Jaro
 )
 
@@ -61,10 +62,12 @@ func init() {
 		gToken = testEnv.Token
 		gAdminID, _ = strconv.ParseInt(testEnv.AdminID, 10, 64)
 		gKumaPushURL = testEnv.KumaURL
+		gWebDomain = testEnv.WebDomain
 	} else {
 		gToken = os.Getenv("BOT_TOKEN")
 		gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 		gKumaPushURL = os.Getenv("KUMA_PUSH_URL")
+		gWebDomain = os.Getenv("WEB_DOMAIN")
 	}
 	gStrCompareAlgo = metrics.NewJaro()
 	gStrCompareAlgo.CaseSensitive = false
@@ -102,9 +105,9 @@ func main() {
 		return
 	}
 
-	for _, s := range chatCMD {
-		b.Handle(s, func(c tele.Context) error {
-			return cmdInChatHandler(c)
+	for _, s := range CMDs {
+		b.Handle("/"+s.cmd, func(c tele.Context) error {
+			return cmdInChatHandler(c, s.level)
 		})
 	}
 

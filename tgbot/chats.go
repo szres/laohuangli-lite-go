@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -22,10 +20,15 @@ type privateChat struct {
 	Timeout int
 }
 
+type command struct {
+	cmd string
+	// 0: root, 1: admin, 2: user
+	level int
+	desc  string
+}
+
 var chats = syncmap.Map{}
-var adminCMD []string
-var userCMD []string
-var chatCMD []string
+var CMDs []command
 
 func escapeNominate(s string) (ret string) {
 	var list []string = []string{
@@ -61,13 +64,16 @@ func chatLoad(id int64) privateChat {
 }
 
 func init() {
-	adminCMD = []string{
-		"/listall", "/forcereadlocal", "/random", "/randommore",
+	CMDs = []command{
+		{"help", 2, "显示帮助信息"},
+		{"start", 2, "显示帮助信息"},
+		{"nominate", 2, "提名新词条"},
+		{"list", 2, "列举本人正在投票词条"},
+		{"listall", 1, "列举所有提名词条"},
+		{"random", 1, "获取一个随机词条"},
+		{"randommore", 1, "获取多个随机词条"},
+		{"forcereadlocal", 0, "强制读取本地词条"},
 	}
-	userCMD = []string{
-		"/help", "/start", "/nominate", "/list",
-	}
-	chatCMD = slices.Concat(adminCMD, userCMD)
 	chats = syncmap.Map{}
 	go updateChats()
 }
@@ -93,7 +99,14 @@ func msg2User(userID int64, what any) error {
 	return chaterr
 }
 
-func cmdInChatHandler(c tele.Context) error {
+func getUserPrivilege(id int64) int {
+	if id == gAdminID {
+		return 0
+	}
+	// TODO:
+	return 2
+}
+func cmdInChatHandler(c tele.Context, level int) error {
 	if _, ok := chats.Load(c.Chat().ID); !ok {
 		chats.Store(c.Chat().ID, privateChat{
 			State: IDLE,
@@ -104,11 +117,10 @@ func cmdInChatHandler(c tele.Context) error {
 		chat.Timeout = 9
 		chats.Store(c.Chat().ID, chat)
 	}()
+	privilege := getUserPrivilege(c.Sender().ID)
 
-	if slices.Contains(adminCMD, c.Text()) {
-		if c.Sender().ID != gAdminID {
-			return c.Send("您没有权限使用此命令")
-		}
+	if privilege > level {
+		return c.Send("您没有权限使用此命令")
 	}
 
 	randLaoHuangLi := func() string {
@@ -125,13 +137,14 @@ func cmdInChatHandler(c tele.Context) error {
 		fallthrough
 	case "/help":
 		chat.State = IDLE
-		help := "提名新词条请发送 /nominate\n列举提名词条请发送 /list"
-		webDomain := os.Getenv("WEB_DOMAIN")
-		if webDomain != "" {
-			help += "\n\n查看其他信息请访问老黄历网站: " + webDomain
+		help := "命令列表:\n"
+		for _, v := range CMDs {
+			if v.level >= privilege {
+				help += fmt.Sprintf("/%s - %s\n", v.cmd, v.desc)
+			}
 		}
-		if c.Sender().ID == gAdminID {
-			help += "\n\n以下为管理员命令：\n列出所有提名词条请发送 /listall\n强制读取本地词条请发送 /forcereadlocal\n获取一个随机提名词条请发送 /random\n获取多个随机提名词条请发送 /randommore"
+		if gWebDomain != "" {
+			help += "\n查看其他信息请访问老黄历网站: " + gWebDomain + "\n提名模板词条可使用提名助手: " + gWebDomain + "/templates"
 		}
 		return c.Send(help)
 	case "/list":
@@ -145,7 +158,7 @@ func cmdInChatHandler(c tele.Context) error {
 			}
 		}
 		if existNomination == 0 {
-			return c.Send("你还没有提名任何词条，请发送 /nominate 提名新词条")
+			return c.Send("你还没有提名任何词条")
 		} else {
 			return c.Send(msg, tele.ModeMarkdownV2)
 		}
@@ -158,12 +171,13 @@ func cmdInChatHandler(c tele.Context) error {
 		}
 		if existNomination >= 5 {
 			chat.State = IDLE
-			return c.Send("你已经提名过太多词条了，请等待提名投票结束再提交新词条吧！")
+			return c.Send("你有太多词条正在提名中，请等待提名投票结束再提交新词条吧！")
 		}
 		chat.State = NOMINATE
 		return c.Send("请输入你要提名的词条内容：")
 
 	case "/forcereadlocal":
+		// TODO:
 		laoHL.init(db)
 		nominations.init()
 		return c.Send("已强制读取本地储存", tele.ModeMarkdownV2)
