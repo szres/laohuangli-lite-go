@@ -501,10 +501,12 @@ func (tr *todayResults) NewRand() {
 		wearStr = append(wearStr, "")
 		for k, v := range wearList {
 			conc := ""
-			if k == len(wearList)-1 {
-				conc = "和"
-			} else {
-				conc = "、"
+			if k > 1 {
+				if k == len(wearList)-1 {
+					conc = "和"
+				} else {
+					conc = "、"
+				}
 			}
 			wearStr[i] += conc + v
 		}
