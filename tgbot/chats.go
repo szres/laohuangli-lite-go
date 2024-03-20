@@ -65,13 +65,13 @@ func chatLoad(id int64) privateChat {
 
 func init() {
 	CMDs = []command{
-		{"help", 2, "显示帮助信息"},
-		{"start", 2, "显示帮助信息"},
-		{"nominate", 2, "提名新词条"},
-		{"list", 2, "列举本人正在投票词条"},
-		{"listall", 1, "列举所有提名词条"},
-		{"random", 1, "获取一个随机词条"},
-		{"randommore", 1, "获取多个随机词条"},
+		{"help", 99, "显示帮助信息"},
+		{"start", 99, "显示帮助信息"},
+		{"nominate", 99, "提名新词条"},
+		{"list", 99, "列举本人正在投票词条"},
+		{"listall", 2, "列举所有提名词条"},
+		{"random", 2, "获取一个随机词条"},
+		{"randommore", 2, "获取多个随机词条"},
 		{"forcereadlocal", 0, "强制读取本地词条"},
 	}
 	chats = syncmap.Map{}
@@ -104,7 +104,7 @@ func getUserPrivilege(id int64) int {
 		return 0
 	}
 	// TODO:
-	return 2
+	return 99
 }
 func cmdInChatHandler(c tele.Context, level int) error {
 	if _, ok := chats.Load(c.Chat().ID); !ok {
