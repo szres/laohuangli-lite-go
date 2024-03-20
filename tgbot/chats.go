@@ -100,7 +100,7 @@ func msg2User(userID int64, what any) error {
 }
 
 func getUserPrivilege(id int64) int {
-	if id == gAdminID {
+	if id == gRootID {
 		return 0
 	}
 	// TODO:

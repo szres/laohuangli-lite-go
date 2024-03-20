@@ -42,7 +42,7 @@ type laohuangliResult struct {
 var (
 	gTimezone       *time.Location = time.FixedZone("CST", 8*60*60)
 	gTimeFormat     string         = "2006-01-02 15:04"
-	gAdminID        int64
+	gRootID         int64
 	gKumaPushURL    string
 	gToken          string
 	gWebDomain      string
@@ -60,18 +60,18 @@ func init() {
 	db.Read("test", "env", &testEnv)
 	if testEnv.Token != "" {
 		gToken = testEnv.Token
-		gAdminID, _ = strconv.ParseInt(testEnv.AdminID, 10, 64)
+		gRootID, _ = strconv.ParseInt(testEnv.AdminID, 10, 64)
 		gKumaPushURL = testEnv.KumaURL
 		gWebDomain = testEnv.WebDomain
 	} else {
 		gToken = os.Getenv("BOT_TOKEN")
-		gAdminID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
+		gRootID, _ = strconv.ParseInt(os.Getenv("BOT_ADMIN_ID"), 10, 64)
 		gKumaPushURL = os.Getenv("KUMA_PUSH_URL")
 		gWebDomain = os.Getenv("WEB_DOMAIN")
 	}
 	gStrCompareAlgo = metrics.NewJaro()
 	gStrCompareAlgo.CaseSensitive = false
-	fmt.Printf("gToken:%s\ngAdminID:%d\ngKumaPushURL:%s\n", gToken, gAdminID, gKumaPushURL)
+	fmt.Printf("gToken:%s\ngRootID:%d\ngKumaPushURL:%s\n", gToken, gRootID, gKumaPushURL)
 	k := kuma.New(gKumaPushURL)
 	k.Start()
 	go func() {
