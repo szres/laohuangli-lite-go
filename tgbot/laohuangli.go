@@ -278,11 +278,11 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 			pp = 1
 			np = 1
 			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
-			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
 				pp += 1
 			}
 			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
-			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
 				np += 1
 			}
 			head = "今日：\n"
