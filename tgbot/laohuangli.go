@@ -476,6 +476,7 @@ func (tr *todayResults) NewRand() {
 	travel := []string{
 		"{{transport}}",
 		"{{transport}}",
+		"{{transport}}",
 		"{{transport}}转{{transportwo}}",
 	}
 
