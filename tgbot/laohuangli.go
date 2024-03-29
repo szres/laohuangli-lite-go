@@ -260,29 +260,25 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 		switch len(lhl.cache.Caches) {
 		case 0:
 			pp = 4
-			np = 2
+			np = 1
 			head = "作为今日第一位祈求命运之人，洞察到了清晰的命运，今日：\n"
 		case 1:
 			pp = 3
 			np = 1
 			head = "为今日第二位老黄历用户，祈求的命运已开始模糊，今日：\n"
-		case 2:
-			pp = 1
-			np = 1
-			head = "作为今日第三位老黄历主顾，只能从完全模糊的命运中洞察到一丝线索，今日：\n"
 		case 12:
-			pp = 2
-			np = 6
+			pp = 1
+			np = 5
 			head = "作为第十三位祈求命运之人，命运的天平将为他倾斜，今日：\n"
 		default:
 			pp = 1
 			np = 1
 			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
-			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
 				pp += 1
 			}
 			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
-			if randInt.Cmp(big.NewInt(90000)) >= 0 {
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
 				np += 1
 			}
 			head = "今日：\n"
@@ -480,6 +476,7 @@ func (tr *todayResults) NewRand() {
 	travel := []string{
 		"{{transport}}",
 		"{{transport}}",
+		"{{transport}}",
 		"{{transport}}转{{transportwo}}",
 	}
 
@@ -501,7 +498,7 @@ func (tr *todayResults) NewRand() {
 		wearStr = append(wearStr, "")
 		for k, v := range wearList {
 			conc := ""
-			if k > 1 {
+			if k >= 1 {
 				if k == len(wearList)-1 {
 					conc = "和"
 				} else {
