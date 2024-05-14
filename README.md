@@ -1,4 +1,8 @@
-# 新老黄历Go
+
+<img width="128" src="website/static/favicon.png"/>
+
+
+# 老黄历Go
 
 [![Chat on Telegram](https://img.shields.io/badge/@LuckyYUI_bot-2CA5E0.svg?logo=telegram&label=Telegram)](https://t.me/LuckyYUI_bot)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Nigh/laohuangli-lite-go?style=flat&color=ffaaaa)
