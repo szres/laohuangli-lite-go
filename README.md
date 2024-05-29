@@ -1,7 +1,7 @@
-
-<img width="128" src="website/static/favicon.png"/>
-
-
+<div align="center">
+<img src="https://socialify.git.ci/szres/laohuangli-lite-go/image?font=KoHo&language=1&logo=https%3A%2F%2Fraw.githubusercontent.com%2Fszres%2Flaohuangli-lite-go%2Fmain%2Fwebsite%2Fstatic%2Ffavicon.png&name=1&pattern=Circuit%20Board&stargazers=1&theme=Auto" alt="laohuangli-lite-go" width="640" height="320" />
+</div>
+   
 # 老黄历Go
 
 [![Chat on Telegram](https://img.shields.io/badge/@LuckyYUI_bot-2CA5E0.svg?logo=telegram&label=Telegram)](https://t.me/LuckyYUI_bot)
