@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	_ "time/tzdata"
 
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/sync/syncmap"

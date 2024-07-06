@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"time"
+	_ "time/tzdata"
 )
 
 func PP(n int64) bool {
