@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/adrg/strutil"
 	scribble "github.com/nanobox-io/golang-scribble"
@@ -48,7 +49,7 @@ func (lhl *laohuangli) init(db *scribble.Driver) {
 
 	var lhlBanlancedEntries banlancedEntriesSave
 	lhl.db.Read("datas", "laohuangliBanlancedEntries", &lhlBanlancedEntries)
-	if lhlBanlancedEntries.Date == time.Now().In(gTimezone).Format("2006-01-02") {
+	if lhlBanlancedEntries.Date == time.Now().Format("2006-01-02") {
 		fmt.Println("加权词条库缓存有效")
 		lhl.entriesBanlanced = lhlBanlancedEntries.Entries
 	} else {
@@ -71,7 +72,7 @@ func (lhl *laohuangli) save() {
 		fmt.Println("保存用户词条失败:" + err.Error())
 	}
 	var lhlBanlancedEntries banlancedEntriesSave
-	lhlBanlancedEntries.Date = time.Now().In(gTimezone).Format("2006-01-02")
+	lhlBanlancedEntries.Date = time.Now().Format("2006-01-02")
 	lhlBanlancedEntries.Entries = lhl.entriesBanlanced
 	err = lhl.db.Write("datas", "laohuangliBanlancedEntries", lhlBanlancedEntries)
 	if err == nil {
@@ -326,7 +327,7 @@ func (lhl *laohuangli) randomToday(id int64, name string) string {
 func (lhl *laohuangli) update() {
 	ticker := time.NewTicker(5 * time.Second)
 	for range ticker.C {
-		date := time.Now().In(gTimezone).Format("2006-01-02")
+		date := time.Now().Format("2006-01-02")
 		if date != lhl.cache.Date {
 			if len(lhl.cache.Caches) > 0 {
 				lhl.cache.Backup(lhl.cache.Date)
@@ -547,7 +548,7 @@ func (c *laohuangliCache) Init() {
 	db.Read("datas", "cache", c)
 }
 func (c *laohuangliCache) New() {
-	*c = laohuangliCache{Date: time.Now().In(gTimezone).Format("2006-01-02"), Caches: make(map[int64]laohuangliResult), Today: todayResults{}}
+	*c = laohuangliCache{Date: time.Now().Format("2006-01-02"), Caches: make(map[int64]laohuangliResult), Today: todayResults{}}
 	c.Today.NewRand()
 }
 func (c *laohuangliCache) Save() {

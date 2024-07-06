@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/adrg/strutil"
 	"github.com/valyala/fasttemplate"
@@ -73,7 +74,7 @@ func (n *nomination) isQuickRefused() bool {
 	return false
 }
 func (n *nomination) voteEndTimeString() string {
-	return time.Unix(n.Time+86400, 0).In(gTimezone).Format(gTimeFormat)
+	return time.Unix(n.Time+86400, 0).Format(gTimeFormat)
 }
 func (n nomination) MessageSig() (messageID string, chatID int64) {
 	return strconv.Itoa(n.ID), n.CID
@@ -300,13 +301,13 @@ func (n nomination) buildVotingText() string {
 
 func (n nomination) buildVoteResultText() string {
 	if n.isQuickPassed() {
-		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().Format(gTimeFormat))
 	}
 	if n.isQuickRefused() {
 		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到快速否决条件。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已被系统否决。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers))
 	}
 	if n.isPassed() {
-		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().In(gTimezone).Format(gTimeFormat))
+		return fmt.Sprintf("由 %s 提名的新词条 \"`%s`\" 已达到过审标准。\n\n赞成：`%d` 票\n反对：`%d` 票\n\n词条已于 `%s` 上线。", fmt.Sprintf("[%s](tg://user?id=%d)", n.NominatorName, n.NominatorID), n.Content, len(n.ApprovedUsers), len(n.RefusedUsers), time.Now().Format(gTimeFormat))
 	}
 	return ""
 }

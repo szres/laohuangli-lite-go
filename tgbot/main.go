@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	kuma "github.com/Nigh/kuma-push"
 	"github.com/adrg/strutil/metrics"
@@ -39,8 +40,7 @@ type laohuangliResult struct {
 }
 
 var (
-	gTimezone    *time.Location = time.FixedZone("CST", 8*60*60)
-	gTimeFormat  string         = "2006-01-02 15:04"
+	gTimeFormat  string = "2006-01-02 15:04"
 	gAdminID     int64
 	gKumaPushURL string
 	gToken       string
@@ -129,7 +129,7 @@ func main() {
 		}
 		results = append(results, &tele.ArticleResult{
 			Title: "今日众生老黄历",
-			Text:  "今天是" + time.Now().In(gTimezone).Format("2006年01月02日") + "。\n" + laoHL.cache.Today.String(),
+			Text:  "今天是" + time.Now().Format("2006年01月02日") + "。\n" + laoHL.cache.Today.String(),
 		})
 		results = append(results, &tele.ArticleResult{
 			Title: "今日我的老黄历",

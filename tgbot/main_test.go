@@ -95,6 +95,6 @@ func BenchmarkRandom(b *testing.B) {
 // func BenchmarkRandomStable(b *testing.B) {
 // 	for i := 0; i < b.N; i++ {
 // 		id := int64(i)
-// 		laoHL.randomStable(time.Now().In(gTimezone).Format("20060102") + "-" + strconv.FormatInt(id, 10))
+// 		laoHL.randomStable(time.Now().Format("20060102") + "-" + strconv.FormatInt(id, 10))
 // 	}
 // }
