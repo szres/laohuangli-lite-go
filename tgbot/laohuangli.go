@@ -253,76 +253,69 @@ func (lhl *laohuangli) randomThenDelete() (str string, err error) {
 
 func (lhl *laohuangli) randomToday(id int64, name string) string {
 	r := lhl.cache.Exist(id)
-	if len(r) > 0 {
-		return r
-	}
-	head := ""
-	body := ""
-	pp := 1
-	np := 1
-	switch len(lhl.cache.Caches) {
-	case 0:
-		pp = 4
-		np = 1
-		head = "作为今日第一位祈求命运之人，洞察到了清晰的命运，今日：\n"
-	case 1:
-		pp = 3
-		np = 1
-		head = "为今日第二位老黄历用户，祈求的命运已开始模糊，今日：\n"
-	case 12:
-		pp = 1
-		np = 5
-		head = "作为第十三位祈求命运之人，命运的天平将为他倾斜，今日：\n"
-	default:
-		pp = 1
-		np = 1
-		randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
-		if randInt.Cmp(big.NewInt(95000)) >= 0 {
-			pp += 1
+	if len(r) == 0 {
+		head := ""
+		body := ""
+		pp := 1
+		np := 1
+		switch len(lhl.cache.Caches) {
+		case 0:
+			pp = 4
+			np = 1
+			head = "作为今日第一位祈求命运之人，洞察到了清晰的命运，今日：\n"
+		case 1:
+			pp = 3
+			np = 1
+			head = "为今日第二位老黄历用户，祈求的命运已开始模糊，今日：\n"
+		case 12:
+			pp = 1
+			np = 5
+			head = "作为第十三位祈求命运之人，命运的天平将为他倾斜，今日：\n"
+		default:
+			pp = 1
+			np = 1
+			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
+				pp += 1
+			}
+			randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
+			if randInt.Cmp(big.NewInt(95000)) >= 0 {
+				np += 1
+			}
+			head = "今日：\n"
 		}
-		randInt, _ = rand.Int(rand.Reader, big.NewInt(int64(100000)))
-		if randInt.Cmp(big.NewInt(95000)) >= 0 {
-			np += 1
-		}
-		head = "今日：\n"
-	}
-	strSlice := make([]string, 0)
-	for i := 0; i < pp+np; i++ {
-		var err error
-		var str string
-		if i == 0 {
-			str = ingressStr()
-		}
-		if str == "" {
-			str, err = lhl.randomNotDelete()
+		strSlice := make([]string, 0)
+		for i := 0; i < pp+np; i++ {
+			str, err := lhl.randomThenDelete()
 			if err != nil {
 				return "发现错误，请上报管理员:\n[ERROR]" + err.Error()
 			}
+			strSlice = append(strSlice, str)
+			if i > 0 {
+				body += "，"
+			}
+			if i < pp {
+				body += "宜"
+			} else {
+				body += "忌"
+			}
+			body += str
 		}
-		strSlice = append(strSlice, str)
-		if i > 0 {
-			body += "，"
+		body += "。"
+		// TODO: 重新实现
+		if strutil.Similarity(strSlice[0], strSlice[1], gStrCompareAlgo) > 0.95 {
+			randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(25600)))
+			if randInt.Cmp(big.NewInt(12800)) >= 0 {
+				body = "诸事不宜。请谨慎行事。"
+			} else {
+				body = "诸事皆宜。愿好运与你同行。"
+			}
 		}
-		if i < pp {
-			body += "宜"
-		} else {
-			body += "忌"
-		}
-		body += str
+		lhl.cache.Push(id, name, head+body)
+		lhl.cache.Save()
+		return head + body
 	}
-	body += "。"
-	// TODO: 重新实现
-	if strutil.Similarity(strSlice[0], strSlice[1], gStrCompareAlgo) > 0.95 {
-		randInt, _ := rand.Int(rand.Reader, big.NewInt(int64(25600)))
-		if randInt.Cmp(big.NewInt(12800)) >= 0 {
-			body = "诸事不宜。请谨慎行事。"
-		} else {
-			body = "诸事皆宜。愿好运与你同行。"
-		}
-	}
-	lhl.cache.Push(id, name, head+body)
-	lhl.cache.Save()
-	return head + body
+	return r
 }
 func (lhl *laohuangli) update() {
 	ticker := time.NewTicker(5 * time.Second)
